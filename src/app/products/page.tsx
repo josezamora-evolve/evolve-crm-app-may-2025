@@ -6,12 +6,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Product, CreateProductInput } from '@/types/product';
 import { productStorage } from '@/lib/storage';
+import { validateProduct, ValidationError } from '@/lib/validation';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductInput>({ name: '', price: 0 });
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   // Load products from local storage
   useEffect(() => {
@@ -28,6 +30,21 @@ export default function ProductsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const validation = validateProduct(
+      formData.name, 
+      formData.price, 
+      editingProduct?.id
+    );
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    
+    // Clear any previous validation errors
+    setValidationErrors([]);
     
     if (editingProduct) {
       // Update existing product
@@ -55,6 +72,7 @@ export default function ProductsPage() {
       name: product.name,
       price: product.price
     });
+    setValidationErrors([]);
     setIsDialogOpen(true);
   };
 
@@ -66,11 +84,25 @@ export default function ProductsPage() {
     }
   };
 
+  const getFieldError = (fieldName: string): string | null => {
+    const error = validationErrors.find(err => err.field === fieldName);
+    return error ? error.message : null;
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setValidationErrors([]);
+      setFormData({ name: '', price: 0 });
+      setEditingProduct(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Products</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingProduct(null)}>
               <Plus className="mr-2 h-4 w-4" /> Add Product
@@ -93,25 +125,36 @@ export default function ProductsPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('name') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('name') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                  Price
+                  Price (máximo $10,000)
                 </label>
                 <input
                   type="number"
                   id="price"
                   name="price"
                   min="0"
+                  max="10000"
                   step="0.01"
                   value={formData.price}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('price') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('price') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('price')}</p>
+                )}
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

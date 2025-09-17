@@ -13,9 +13,18 @@ export default function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState<CreateCategoryInput>({ name: '', description: '', color: '#3B82F6' });
 
-  // Load categories from local storage
+  // Load categories from database
   useEffect(() => {
-    setCategories(categoryStorage.getAll());
+    const loadData = async () => {
+      try {
+        const loadedCategories = await categoryStorage.getAll();
+        setCategories(loadedCategories);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    };
+
+    loadData();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -26,27 +35,31 @@ export default function CategoriesPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingCategory) {
-      // Update existing category
-      const updatedCategory = categoryStorage.update(editingCategory.id, formData);
-      if (updatedCategory) {
-        setCategories(prev => 
-          prev.map(c => c.id === updatedCategory.id ? updatedCategory : c)
-        );
+    try {
+      if (editingCategory) {
+        // Update existing category
+        const updatedCategory = await categoryStorage.update(editingCategory.id, formData);
+        if (updatedCategory) {
+          setCategories(prev => 
+            prev.map(c => c.id === updatedCategory.id ? updatedCategory : c)
+          );
+        }
+      } else {
+        // Create new category
+        const newCategory = await categoryStorage.create(formData);
+        setCategories(prev => [...prev, newCategory]);
       }
-    } else {
-      // Create new category
-      const newCategory = categoryStorage.create(formData);
-      setCategories(prev => [...prev, newCategory]);
+      
+      // Reset form and close dialog
+      setFormData({ name: '', description: '', color: '#3B82F6' });
+      setEditingCategory(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving category:', error);
     }
-    
-    // Reset form and close dialog
-    setFormData({ name: '', description: '', color: '#3B82F6' });
-    setEditingCategory(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (category: Category) => {
@@ -59,10 +72,15 @@ export default function CategoriesPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this category? Products with this category will become uncategorized.')) {
-      if (categoryStorage.delete(id)) {
-        setCategories(prev => prev.filter(c => c.id !== id));
+      try {
+        const success = await categoryStorage.delete(id);
+        if (success) {
+          setCategories(prev => prev.filter(c => c.id !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting category:', error);
       }
     }
   };

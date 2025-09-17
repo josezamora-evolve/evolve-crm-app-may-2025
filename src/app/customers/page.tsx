@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Edit, Trash2, ShoppingBag } from 'lucide-react';
 import { Customer, CreateCustomerInput } from '@/types/customer';
 import { Product } from '@/types/product';
-import { customerStorage, productStorage } from '@/lib/storage';
+import { customerStorage, productStorage, activityStorage } from '@/lib/storage';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -72,17 +72,27 @@ export default function CustomersPage() {
     }
   };
 
+  const handlePurchase = (customer: Customer) => {
+    setSelectedCustomer(customer);
+    setIsPurchaseDialogOpen(true);
+  };
+
   const handlePurchaseSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedCustomer || !selectedProductId) return;
     
-    if (selectedCustomer && selectedProductId) {
-      if (customerStorage.addProductToCustomer(selectedCustomer.id, selectedProductId)) {
-        // Refresh customers list
-        setCustomers(customerStorage.getAll());
-        setSelectedProductId('');
-        setIsPurchaseDialogOpen(false);
-      }
-    }
+    const product = productStorage.getById(selectedProductId);
+    if (!product) return;
+    
+    // Añadir producto al cliente
+    customerStorage.addProductToCustomer(selectedCustomer.id, selectedProductId);
+    
+    // Registrar la actividad
+    activityStorage.logPurchase(selectedCustomer, product, `Compra de ${product.name}`);
+    
+    setSelectedProductId('');
+    setIsPurchaseDialogOpen(false);
+    setCustomers(customerStorage.getAll());
   };
 
   const handleRemoveProduct = (customerId: string, productId: string) => {

@@ -1,9 +1,11 @@
 import { Product } from '@/types/product';
 import { Customer } from '@/types/customer';
+import { Activity } from '@/types/activity';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'crm_products',
   CUSTOMERS: 'crm_customers',
+  ACTIVITIES: 'crm_activities',
 } as const;
 
 type StorageKey = keyof typeof STORAGE_KEYS;
@@ -142,21 +144,59 @@ export const customerStorage = {
   },
   
   removeProductFromCustomer: (customerId: string, productId: string): boolean => {
-    const customers = getItem<Customer>('CUSTOMERS');
+    const customers = this.getAll();
     const customer = customers.find(c => c.id === customerId);
     
     if (!customer) return false;
     
-    const updatedCustomer = {
-      ...customer,
-      purchasedProducts: customer.purchasedProducts.filter(p => p.id !== productId),
-    };
-    
-    const updatedCustomers = customers.map(c => 
-      c.id === customerId ? updatedCustomer : c
+    customer.purchasedProducts = customer.purchasedProducts.filter(
+      p => p.id !== productId
     );
     
-    setItem('CUSTOMERS', updatedCustomers);
+    setItem('CUSTOMERS', customers);
     return true;
+  },
+};
+
+// Activity operations
+export const activityStorage = {
+  getAll: (): Activity[] => getItem<Activity>('ACTIVITIES'),
+  
+  getByCustomerId: (customerId: string): Activity[] => {
+    const activities = getItem<Activity>('ACTIVITIES');
+    return activities.filter(a => a.customerId === customerId)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  },
+  
+  create: (activity: Omit<Activity, 'id'>): Activity => {
+    const activities = getItem<Activity>('ACTIVITIES');
+    const newActivity = {
+      ...activity,
+      id: crypto.randomUUID(),
+    };
+    setItem('ACTIVITIES', [...activities, newActivity]);
+    return newActivity;
+  },
+  
+  delete: (id: string): boolean => {
+    const activities = getItem<Activity>('ACTIVITIES');
+    const filteredActivities = activities.filter(a => a.id !== id);
+    
+    if (activities.length === filteredActivities.length) return false;
+    
+    setItem('ACTIVITIES', filteredActivities);
+    return true;
+  },
+  
+  // Método para registrar una compra
+  logPurchase: function(customer: Customer, product: Product, notes?: string): Activity {
+    return this.create({
+      customerId: customer.id,
+      customerName: customer.name,
+      product,
+      date: new Date().toISOString(),
+      type: 'purchase',
+      notes,
+    });
   },
 };

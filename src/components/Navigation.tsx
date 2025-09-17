@@ -2,11 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Package, Users, Activity as ActivityIcon } from 'lucide-react';
+import { BarChart3, Package, Users, Tag, Activity as ActivityIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
+  { name: 'Dashboard', href: '/', icon: BarChart3 },
   { name: 'Productos', href: '/products', icon: Package },
+  { name: 'Categories', href: '/categories', icon: Tag },
   { name: 'Clientes', href: '/customers', icon: Users },
   { name: 'Actividades', href: '/activities', icon: ActivityIcon },
 ];

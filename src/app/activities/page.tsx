@@ -18,29 +18,47 @@ export default function ActivitiesPage() {
     loadActivities();
   }, [selectedCustomer, activityType]);
 
-  const loadActivities = () => {
+  const loadActivities = async () => {
     setIsLoading(true);
-    let allActivities = activityStorage.getAll();
-    
-    // Filtrar por cliente si es necesario
-    if (selectedCustomer !== 'all') {
-      allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
+    try {
+      let allActivities = await activityStorage.getAll();
+      
+      // Filtrar por cliente si es necesario
+      if (selectedCustomer !== 'all') {
+        allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
+      }
+      
+      // Filtrar por tipo de actividad si es necesario
+      if (activityType !== 'all') {
+        allActivities = allActivities.filter(a => a.type === activityType);
+      }
+      
+      // Ordenar por fecha (más reciente primero)
+      allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setActivities(allActivities);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Filtrar por tipo de actividad si es necesario
-    if (activityType !== 'all') {
-      allActivities = allActivities.filter(a => a.type === activityType);
-    }
-    
-    // Ordenar por fecha (más reciente primero)
-    allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    setActivities(allActivities);
-    setIsLoading(false);
   };
 
-  // Obtener la lista de clientes para el filtro
-  const customers = customerStorage.getAll();
+  // Estado para clientes
+  const [customers, setCustomers] = useState<any[]>([]);
+
+  // Cargar clientes
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        const loadedCustomers = await customerStorage.getAll();
+        setCustomers(loadedCustomers);
+      } catch (error) {
+        console.error('Error loading customers:', error);
+      }
+    };
+    loadCustomers();
+  }, []);
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {

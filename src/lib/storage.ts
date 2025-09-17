@@ -2,303 +2,464 @@ import { Product } from '@/types/product';
 import { Customer } from '@/types/customer';
 import { Category } from '@/types/category';
 import { Activity } from '@/types/activity';
-
-const STORAGE_KEYS = {
-  PRODUCTS: 'crm_products',
-  CUSTOMERS: 'crm_customers',
-  CATEGORIES: 'crm_categories',
-  ACTIVITIES: 'crm_activities',
-} as const;
-
-type StorageKey = keyof typeof STORAGE_KEYS;
-
-function getItem<T>(key: StorageKey): T[] {
-  if (typeof window === 'undefined') return [];
-  const data = localStorage.getItem(STORAGE_KEYS[key]);
-  return data ? JSON.parse(data) : [];
-}
-
-function setItem<T>(key: StorageKey, data: T[]): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEYS[key], JSON.stringify(data));
-}
+import { supabase } from './supabase';
 
 // Product operations
 export const productStorage = {
-  getAll: (): Product[] => getItem('PRODUCTS'),
-  
-  getById: (id: string): Product | undefined => {
-    const products = getItem<Product>('PRODUCTS');
-    return products.find(p => p.id === id);
+  getAll: async (): Promise<Product[]> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching products:', error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      categoryId: item.category_id
+    }));
   },
   
-  create: (product: Omit<Product, 'id'>): Product => {
-    const products = getItem<Product>('PRODUCTS');
-    const newProduct = {
-      ...product,
-      id: crypto.randomUUID(),
+  getById: async (id: string): Promise<Product | undefined> => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error || !data) {
+      return undefined;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      categoryId: data.category_id
     };
-    setItem('PRODUCTS', [...products, newProduct]);
-    return newProduct;
   },
   
-  update: (id: string, updates: Partial<Omit<Product, 'id'>>): Product | null => {
-    const products = getItem<Product>('PRODUCTS');
-    const index = products.findIndex(p => p.id === id);
+  create: async (product: Omit<Product, 'id'>): Promise<Product> => {
+    const { data, error } = await supabase
+      .from('products')
+      .insert({
+        name: product.name,
+        price: product.price,
+        category_id: product.categoryId || null
+      })
+      .select()
+      .single();
     
-    if (index === -1) return null;
+    if (error || !data) {
+      throw new Error(`Error creating product: ${error?.message}`);
+    }
     
-    const updatedProduct = {
-      ...products[index],
-      ...updates,
+    return {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      categoryId: data.category_id
     };
-    
-    const updatedProducts = [...products];
-    updatedProducts[index] = updatedProduct;
-    setItem('PRODUCTS', updatedProducts);
-    
-    return updatedProduct;
   },
   
-  delete: (id: string): boolean => {
-    const products = getItem<Product>('PRODUCTS');
-    const filtered = products.filter(p => p.id !== id);
+  update: async (id: string, updates: Partial<Omit<Product, 'id'>>): Promise<Product | null> => {
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.price !== undefined) updateData.price = updates.price;
+    if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId || null;
     
-    if (products.length === filtered.length) return false;
+    const { data, error } = await supabase
+      .from('products')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
     
-    setItem('PRODUCTS', filtered);
-    return true;
+    if (error || !data) {
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name,
+      price: data.price,
+      categoryId: data.category_id
+    };
+  },
+  
+  delete: async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', id);
+    
+    return !error;
   },
 };
 
 // Customer operations
 export const customerStorage = {
-  getAll: (): Customer[] => getItem('CUSTOMERS'),
-  
-  getById: (id: string): Customer | undefined => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    return customers.find(c => c.id === id);
+  getAll: async (): Promise<Customer[]> => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select(`
+        *,
+        customer_products (
+          products (*)
+        )
+      `)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching customers:', error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      email: item.email,
+      purchasedProducts: item.customer_products.map((cp: any) => ({
+        id: cp.products.id,
+        name: cp.products.name,
+        price: cp.products.price,
+        categoryId: cp.products.category_id
+      }))
+    }));
   },
   
-  create: (customer: Omit<Customer, 'id' | 'purchasedProducts'>): Customer => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const newCustomer: Customer = {
-      ...customer,
-      id: crypto.randomUUID(),
-      purchasedProducts: [],
+  getById: async (id: string): Promise<Customer | undefined> => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select(`
+        *,
+        customer_products (
+          products (*)
+        )
+      `)
+      .eq('id', id)
+      .single();
+    
+    if (error || !data) {
+      return undefined;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      purchasedProducts: data.customer_products.map((cp: any) => ({
+        id: cp.products.id,
+        name: cp.products.name,
+        price: cp.products.price,
+        categoryId: cp.products.category_id
+      }))
     };
-    setItem('CUSTOMERS', [...customers, newCustomer]);
-    return newCustomer;
   },
   
-  update: (id: string, updates: Partial<Omit<Customer, 'id'>>): Customer | null => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const index = customers.findIndex(c => c.id === id);
+  create: async (customer: Omit<Customer, 'id' | 'purchasedProducts'>): Promise<Customer> => {
+    const { data, error } = await supabase
+      .from('customers')
+      .insert({
+        name: customer.name,
+        email: customer.email
+      })
+      .select()
+      .single();
     
-    if (index === -1) return null;
+    if (error || !data) {
+      throw new Error(`Error creating customer: ${error?.message}`);
+    }
     
-    const updatedCustomer = {
-      ...customers[index],
-      ...updates,
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      purchasedProducts: []
     };
-    
-    const updatedCustomers = [...customers];
-    updatedCustomers[index] = updatedCustomer;
-    setItem('CUSTOMERS', updatedCustomers);
-    
-    return updatedCustomer;
   },
   
-  delete: (id: string): boolean => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const filtered = customers.filter(c => c.id !== id);
+  update: async (id: string, updates: Partial<Omit<Customer, 'id'>>): Promise<Customer | null> => {
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.email !== undefined) updateData.email = updates.email;
     
-    if (customers.length === filtered.length) return false;
+    const { data, error } = await supabase
+      .from('customers')
+      .update(updateData)
+      .eq('id', id)
+      .select(`
+        *,
+        customer_products (
+          products (*)
+        )
+      `)
+      .single();
     
-    setItem('CUSTOMERS', filtered);
-    return true;
-  },
-  
-  addProductToCustomer: (customerId: string, productId: string): boolean => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const customer = customers.find(c => c.id === customerId);
+    if (error || !data) {
+      return null;
+    }
     
-    if (!customer) return false;
-    
-    // Check if product exists
-    const product = productStorage.getById(productId);
-    if (!product) return false;
-    
-    // Check if product is already added
-    if (customer.purchasedProducts.some(p => p.id === productId)) return true;
-    
-    const updatedCustomer = {
-      ...customer,
-      purchasedProducts: [...customer.purchasedProducts, product],
+    return {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      purchasedProducts: data.customer_products.map((cp: any) => ({
+        id: cp.products.id,
+        name: cp.products.name,
+        price: cp.products.price,
+        categoryId: cp.products.category_id
+      }))
     };
-    
-    const updatedCustomers = customers.map(c => 
-      c.id === customerId ? updatedCustomer : c
-    );
-    
-    setItem('CUSTOMERS', updatedCustomers);
-    return true;
   },
   
-  removeProductFromCustomer: (customerId: string, productId: string): boolean => {
-    const customers = this.getAll();
-    const customer = customers.find(c => c.id === customerId);
+  delete: async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('customers')
+      .delete()
+      .eq('id', id);
     
-    if (!customer) return false;
+    return !error;
+  },
+  
+  addProductToCustomer: async (customerId: string, productId: string): Promise<boolean> => {
+    // Check if relationship already exists
+    const { data: existing } = await supabase
+      .from('customer_products')
+      .select('id')
+      .eq('customer_id', customerId)
+      .eq('product_id', productId)
+      .single();
     
-    customer.purchasedProducts = customer.purchasedProducts.filter(
-      p => p.id !== productId
-    );
+    if (existing) return true; // Already exists
     
-    setItem('CUSTOMERS', customers);
-    return true;
-  },
-};
-
-// Analytics and statistics
-export const analytics = {
-  getTotalProducts: (): number => {
-    return getItem<Product>('PRODUCTS').length;
-  },
-
-  getTotalCustomers: (): number => {
-    return getItem<Customer>('CUSTOMERS').length;
-  },
-
-  getTotalRevenue: (): number => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    return customers.reduce((total, customer) => {
-      return total + customer.purchasedProducts.reduce((customerTotal, product) => {
-        return customerTotal + product.price;
-      }, 0);
-    }, 0);
-  },
-
-  getMostSoldProducts: (limit: number = 5): Array<{ product: Product; salesCount: number }> => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const productSales: Record<string, { product: Product; count: number }> = {};
-
-    customers.forEach(customer => {
-      customer.purchasedProducts.forEach(product => {
-        if (productSales[product.id]) {
-          productSales[product.id].count++;
-        } else {
-          productSales[product.id] = { product, count: 1 };
-        }
+    const { error } = await supabase
+      .from('customer_products')
+      .insert({
+        customer_id: customerId,
+        product_id: productId
       });
-    });
-
-    return Object.values(productSales)
-      .map(({ product, count }) => ({ product, salesCount: count }))
-      .sort((a, b) => b.salesCount - a.salesCount)
-      .slice(0, limit);
+    
+    return !error;
   },
-
-  getRevenueByProduct: (): Array<{ product: Product; revenue: number }> => {
-    const customers = getItem<Customer>('CUSTOMERS');
-    const productRevenue: Record<string, { product: Product; revenue: number }> = {};
-
-    customers.forEach(customer => {
-      customer.purchasedProducts.forEach(product => {
-        if (productRevenue[product.id]) {
-          productRevenue[product.id].revenue += product.price;
-        } else {
-          productRevenue[product.id] = { product, revenue: product.price };
-        }
-      });
-    });
-
-    return Object.values(productRevenue)
-      .sort((a, b) => b.revenue - a.revenue);
+  
+  removeProductFromCustomer: async (customerId: string, productId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('customer_products')
+      .delete()
+      .eq('customer_id', customerId)
+      .eq('product_id', productId);
+    
+    return !error;
   },
 };
 
 // Category operations
 export const categoryStorage = {
-  getAll: (): Category[] => getItem('CATEGORIES'),
-  
-  getById: (id: string): Category | undefined => {
-    const categories = getItem<Category>('CATEGORIES');
-    return categories.find(c => c.id === id);
+  getAll: async (): Promise<Category[]> => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      color: item.color
+    }));
   },
   
-  create: (category: Omit<Category, 'id'>): Category => {
-    const categories = getItem<Category>('CATEGORIES');
-    const newCategory = {
-      ...category,
-      id: crypto.randomUUID(),
+  getById: async (id: string): Promise<Category | undefined> => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error || !data) {
+      return undefined;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      color: data.color
     };
-    setItem('CATEGORIES', [...categories, newCategory]);
-    return newCategory;
   },
   
-  update: (id: string, updates: Partial<Omit<Category, 'id'>>): Category | null => {
-    const categories = getItem<Category>('CATEGORIES');
-    const index = categories.findIndex(c => c.id === id);
+  create: async (category: Omit<Category, 'id'>): Promise<Category> => {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert({
+        name: category.name,
+        description: category.description,
+        color: category.color
+      })
+      .select()
+      .single();
     
-    if (index === -1) return null;
+    if (error || !data) {
+      throw new Error(`Error creating category: ${error?.message}`);
+    }
     
-    const updatedCategory = {
-      ...categories[index],
-      ...updates,
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      color: data.color
     };
-    
-    const updatedCategories = [...categories];
-    updatedCategories[index] = updatedCategory;
-    setItem('CATEGORIES', updatedCategories);
-    
-    return updatedCategory;
   },
   
-  delete: (id: string): boolean => {
-    const categories = getItem<Category>('CATEGORIES');
-    const filtered = categories.filter(c => c.id !== id);
+  update: async (id: string, updates: Partial<Omit<Category, 'id'>>): Promise<Category | null> => {
+    const updateData: any = {};
+    if (updates.name !== undefined) updateData.name = updates.name;
+    if (updates.description !== undefined) updateData.description = updates.description;
+    if (updates.color !== undefined) updateData.color = updates.color;
     
-    if (categories.length === filtered.length) return false;
+    const { data, error } = await supabase
+      .from('categories')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
     
-    setItem('CATEGORIES', filtered);
-    return true;
+    if (error || !data) {
+      return null;
+    }
+    
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      color: data.color
+    };
   },
   
+  delete: async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+    
+    return !error;
+  },
 };
 
 // Activity operations
 export const activityStorage = {
-  getAll: (): Activity[] => getItem<Activity>('ACTIVITIES'),
-  
-  getByCustomerId: (customerId: string): Activity[] => {
-    const activities = getItem<Activity>('ACTIVITIES');
-    return activities.filter(a => a.customerId === customerId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  getAll: async (): Promise<Activity[]> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching activities:', error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      id: item.id,
+      customerId: item.customer_id,
+      customerName: item.customer_name,
+      product: {
+        id: item.product_id,
+        name: item.product_name,
+        price: item.product_price,
+        categoryId: undefined
+      },
+      date: item.date,
+      type: item.type as 'purchase' | 'refund' | 'other',
+      notes: item.notes
+    }));
   },
   
-  create: (activity: Omit<Activity, 'id'>): Activity => {
-    const activities = getItem<Activity>('ACTIVITIES');
-    const newActivity = {
-      ...activity,
-      id: crypto.randomUUID(),
+  getByCustomerId: async (customerId: string): Promise<Activity[]> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('customer_id', customerId)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching activities:', error);
+      return [];
+    }
+    
+    return data.map(item => ({
+      id: item.id,
+      customerId: item.customer_id,
+      customerName: item.customer_name,
+      product: {
+        id: item.product_id,
+        name: item.product_name,
+        price: item.product_price,
+        categoryId: undefined
+      },
+      date: item.date,
+      type: item.type as 'purchase' | 'refund' | 'other',
+      notes: item.notes
+    }));
+  },
+  
+  create: async (activity: Omit<Activity, 'id'>): Promise<Activity> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .insert({
+        customer_id: activity.customerId,
+        customer_name: activity.customerName,
+        product_id: activity.product.id,
+        product_name: activity.product.name,
+        product_price: activity.product.price,
+        date: activity.date,
+        type: activity.type,
+        notes: activity.notes
+      })
+      .select()
+      .single();
+    
+    if (error || !data) {
+      throw new Error(`Error creating activity: ${error?.message}`);
+    }
+    
+    return {
+      id: data.id,
+      customerId: data.customer_id,
+      customerName: data.customer_name,
+      product: {
+        id: data.product_id,
+        name: data.product_name,
+        price: data.product_price,
+        categoryId: undefined
+      },
+      date: data.date,
+      type: data.type as 'purchase' | 'refund' | 'other',
+      notes: data.notes
     };
-    setItem('ACTIVITIES', [...activities, newActivity]);
-    return newActivity;
   },
   
-  delete: (id: string): boolean => {
-    const activities = getItem<Activity>('ACTIVITIES');
-    const filteredActivities = activities.filter(a => a.id !== id);
+  delete: async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', id);
     
-    if (activities.length === filteredActivities.length) return false;
-    
-    setItem('ACTIVITIES', filteredActivities);
-    return true;
+    return !error;
   },
   
-  // Método para registrar una compra
-  logPurchase: function(customer: Customer, product: Product, notes?: string): Activity {
+  logPurchase: async function(customer: Customer, product: Product, notes?: string): Promise<Activity> {
     return this.create({
       customerId: customer.id,
       customerName: customer.name,
@@ -307,5 +468,116 @@ export const activityStorage = {
       type: 'purchase',
       notes,
     });
+  },
+};
+
+// Analytics and statistics
+export const analytics = {
+  getTotalProducts: async (): Promise<number> => {
+    const { count, error } = await supabase
+      .from('products')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) {
+      console.error('Error counting products:', error);
+      return 0;
+    }
+    
+    return count || 0;
+  },
+
+  getTotalCustomers: async (): Promise<number> => {
+    const { count, error } = await supabase
+      .from('customers')
+      .select('*', { count: 'exact', head: true });
+    
+    if (error) {
+      console.error('Error counting customers:', error);
+      return 0;
+    }
+    
+    return count || 0;
+  },
+
+  getTotalRevenue: async (): Promise<number> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('product_price')
+      .eq('type', 'purchase');
+    
+    if (error) {
+      console.error('Error calculating revenue:', error);
+      return 0;
+    }
+    
+    return data.reduce((total, activity) => total + activity.product_price, 0);
+  },
+
+  getMostSoldProducts: async (limit: number = 5): Promise<Array<{ product: Product; salesCount: number }>> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('product_id, product_name, product_price')
+      .eq('type', 'purchase');
+    
+    if (error) {
+      console.error('Error fetching sales data:', error);
+      return [];
+    }
+    
+    const productSales: Record<string, { product: Product; count: number }> = {};
+    
+    data.forEach(activity => {
+      if (productSales[activity.product_id]) {
+        productSales[activity.product_id].count++;
+      } else {
+        productSales[activity.product_id] = {
+          product: {
+            id: activity.product_id,
+            name: activity.product_name,
+            price: activity.product_price,
+            categoryId: undefined
+          },
+          count: 1
+        };
+      }
+    });
+    
+    return Object.values(productSales)
+      .map(({ product, count }) => ({ product, salesCount: count }))
+      .sort((a, b) => b.salesCount - a.salesCount)
+      .slice(0, limit);
+  },
+
+  getRevenueByProduct: async (): Promise<Array<{ product: Product; revenue: number }>> => {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('product_id, product_name, product_price')
+      .eq('type', 'purchase');
+    
+    if (error) {
+      console.error('Error fetching revenue data:', error);
+      return [];
+    }
+    
+    const productRevenue: Record<string, { product: Product; revenue: number }> = {};
+    
+    data.forEach(activity => {
+      if (productRevenue[activity.product_id]) {
+        productRevenue[activity.product_id].revenue += activity.product_price;
+      } else {
+        productRevenue[activity.product_id] = {
+          product: {
+            id: activity.product_id,
+            name: activity.product_name,
+            price: activity.product_price,
+            categoryId: undefined
+          },
+          revenue: activity.product_price
+        };
+      }
+    });
+    
+    return Object.values(productRevenue)
+      .sort((a, b) => b.revenue - a.revenue);
   },
 };

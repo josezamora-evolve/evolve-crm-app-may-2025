@@ -18,10 +18,22 @@ export default function CustomersPage() {
   const [formData, setFormData] = useState<CreateCustomerInput>({ name: '', email: '' });
   const [selectedProductId, setSelectedProductId] = useState('');
 
-  // Load data from local storage
+  // Load data from database
   useEffect(() => {
-    setCustomers(customerStorage.getAll());
-    setProducts(productStorage.getAll());
+    const loadData = async () => {
+      try {
+        const [loadedCustomers, loadedProducts] = await Promise.all([
+          customerStorage.getAll(),
+          productStorage.getAll()
+        ]);
+        setCustomers(loadedCustomers);
+        setProducts(loadedProducts);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,27 +44,31 @@ export default function CustomersPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingCustomer) {
-      // Update existing customer
-      const updatedCustomer = customerStorage.update(editingCustomer.id, formData);
-      if (updatedCustomer) {
-        setCustomers(prev => 
-          prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c)
-        );
+    try {
+      if (editingCustomer) {
+        // Update existing customer
+        const updatedCustomer = await customerStorage.update(editingCustomer.id, formData);
+        if (updatedCustomer) {
+          setCustomers(prev => 
+            prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c)
+          );
+        }
+      } else {
+        // Create new customer
+        const newCustomer = await customerStorage.create(formData);
+        setCustomers(prev => [...prev, newCustomer]);
       }
-    } else {
-      // Create new customer
-      const newCustomer = customerStorage.create(formData);
-      setCustomers(prev => [...prev, newCustomer]);
+      
+      // Reset form and close dialog
+      setFormData({ name: '', email: '' });
+      setEditingCustomer(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving customer:', error);
     }
-    
-    // Reset form and close dialog
-    setFormData({ name: '', email: '' });
-    setEditingCustomer(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (customer: Customer) => {
@@ -64,10 +80,15 @@ export default function CustomersPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this customer?')) {
-      if (customerStorage.delete(id)) {
-        setCustomers(prev => prev.filter(c => c.id !== id));
+      try {
+        const success = await customerStorage.delete(id);
+        if (success) {
+          setCustomers(prev => prev.filter(c => c.id !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting customer:', error);
       }
     }
   };
@@ -77,29 +98,42 @@ export default function CustomersPage() {
     setIsPurchaseDialogOpen(true);
   };
 
-  const handlePurchaseSubmit = (e: React.FormEvent) => {
+  const handlePurchaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCustomer || !selectedProductId) return;
     
-    const product = productStorage.getById(selectedProductId);
-    if (!product) return;
-    
-    // Añadir producto al cliente
-    customerStorage.addProductToCustomer(selectedCustomer.id, selectedProductId);
-    
-    // Registrar la actividad
-    activityStorage.logPurchase(selectedCustomer, product, `Compra de ${product.name}`);
-    
-    setSelectedProductId('');
-    setIsPurchaseDialogOpen(false);
-    setCustomers(customerStorage.getAll());
+    try {
+      const product = await productStorage.getById(selectedProductId);
+      if (!product) return;
+      
+      // Añadir producto al cliente
+      await customerStorage.addProductToCustomer(selectedCustomer.id, selectedProductId);
+      
+      // Registrar la actividad
+      await activityStorage.logPurchase(selectedCustomer, product, `Compra de ${product.name}`);
+      
+      setSelectedProductId('');
+      setIsPurchaseDialogOpen(false);
+      
+      // Refresh customers list
+      const updatedCustomers = await customerStorage.getAll();
+      setCustomers(updatedCustomers);
+    } catch (error) {
+      console.error('Error processing purchase:', error);
+    }
   };
 
-  const handleRemoveProduct = (customerId: string, productId: string) => {
+  const handleRemoveProduct = async (customerId: string, productId: string) => {
     if (window.confirm('Remove this product from the customer?')) {
-      if (customerStorage.removeProductFromCustomer(customerId, productId)) {
-        // Refresh customers list
-        setCustomers(customerStorage.getAll());
+      try {
+        const success = await customerStorage.removeProductFromCustomer(customerId, productId);
+        if (success) {
+          // Refresh customers list
+          const updatedCustomers = await customerStorage.getAll();
+          setCustomers(updatedCustomers);
+        }
+      } catch (error) {
+        console.error('Error removing product:', error);
       }
     }
   };

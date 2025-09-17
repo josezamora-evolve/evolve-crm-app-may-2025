@@ -163,6 +163,64 @@ export const customerStorage = {
   },
 };
 
+// Analytics and statistics
+export const analytics = {
+  getTotalProducts: (): number => {
+    return getItem<Product>('PRODUCTS').length;
+  },
+
+  getTotalCustomers: (): number => {
+    return getItem<Customer>('CUSTOMERS').length;
+  },
+
+  getTotalRevenue: (): number => {
+    const customers = getItem<Customer>('CUSTOMERS');
+    return customers.reduce((total, customer) => {
+      return total + customer.purchasedProducts.reduce((customerTotal, product) => {
+        return customerTotal + product.price;
+      }, 0);
+    }, 0);
+  },
+
+  getMostSoldProducts: (limit: number = 5): Array<{ product: Product; salesCount: number }> => {
+    const customers = getItem<Customer>('CUSTOMERS');
+    const productSales: Record<string, { product: Product; count: number }> = {};
+
+    customers.forEach(customer => {
+      customer.purchasedProducts.forEach(product => {
+        if (productSales[product.id]) {
+          productSales[product.id].count++;
+        } else {
+          productSales[product.id] = { product, count: 1 };
+        }
+      });
+    });
+
+    return Object.values(productSales)
+      .map(({ product, count }) => ({ product, salesCount: count }))
+      .sort((a, b) => b.salesCount - a.salesCount)
+      .slice(0, limit);
+  },
+
+  getRevenueByProduct: (): Array<{ product: Product; revenue: number }> => {
+    const customers = getItem<Customer>('CUSTOMERS');
+    const productRevenue: Record<string, { product: Product; revenue: number }> = {};
+
+    customers.forEach(customer => {
+      customer.purchasedProducts.forEach(product => {
+        if (productRevenue[product.id]) {
+          productRevenue[product.id].revenue += product.price;
+        } else {
+          productRevenue[product.id] = { product, revenue: product.price };
+        }
+      });
+    });
+
+    return Object.values(productRevenue)
+      .sort((a, b) => b.revenue - a.revenue);
+  },
+};
+
 // Category operations
 export const categoryStorage = {
   getAll: (): Category[] => getItem('CATEGORIES'),

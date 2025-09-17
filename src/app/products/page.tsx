@@ -203,10 +203,20 @@ export default function ProductsPage() {
             {filteredProducts.map((product) => (
               <li key={product.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
-                    <p className="text-sm text-gray-500">${product.price.toFixed(2)}</p>
-                    <p className="text-xs text-blue-600">{getCategoryName(product.categoryId)}</p>
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
+                      <p className="text-sm font-medium text-gray-900">${product.price.toFixed(2)}</p>
+                    </div>
+                    {product.categoryId ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {getCategoryName(product.categoryId)}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        Sin categoría
+                      </span>
+                    )}
                   </div>
                   <div className="flex space-x-2">
                     <Button

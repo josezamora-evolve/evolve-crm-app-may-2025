@@ -2,42 +2,55 @@
 
 import { useEffect, useState } from 'react';
 import { Activity } from '@/types/activity';
+import { Category } from '@/types/category';
 import { activityStorage } from '@/lib/storage';
 import { customerStorage } from '@/lib/storage';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { categoryStorage } from '@/lib/storage';
 
 export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [activityType, setActivityType] = useState<string>('all');
+  const [categories, setCategories] = useState<Category[]>([]);
 
-  // Cargar actividades
+  // Cargar actividades y categorías
   useEffect(() => {
-    loadActivities();
-  }, [selectedCustomer, activityType]);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Cargar categorías
+        const loadedCategories = categoryStorage.getAll();
+        setCategories(loadedCategories);
+        
+        // Cargar y filtrar actividades
+        let allActivities = activityStorage.getAll();
+        
+        // Filtrar por cliente si es necesario
+        if (selectedCustomer !== 'all') {
+          allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
+        }
+        
+        // Filtrar por tipo de actividad si es necesario
+        if (activityType !== 'all') {
+          allActivities = allActivities.filter(a => a.type === activityType);
+        }
+        
+        // Ordenar por fecha (más reciente primero)
+        allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        setActivities(allActivities);
+      } catch (error) {
+        console.error('Error al cargar actividades:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const loadActivities = () => {
-    setIsLoading(true);
-    let allActivities = activityStorage.getAll();
-    
-    // Filtrar por cliente si es necesario
-    if (selectedCustomer !== 'all') {
-      allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
-    }
-    
-    // Filtrar por tipo de actividad si es necesario
-    if (activityType !== 'all') {
-      allActivities = allActivities.filter(a => a.type === activityType);
-    }
-    
-    // Ordenar por fecha (más reciente primero)
-    allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    setActivities(allActivities);
-    setIsLoading(false);
-  };
+    loadData();
+  }, [selectedCustomer, activityType]);
 
   // Obtener la lista de clientes para el filtro
   const customers = customerStorage.getAll();
@@ -126,12 +139,17 @@ export default function ActivitiesPage() {
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActivityTypeColor(activity.type)}`}>
                         {activity.type === 'purchase' ? 'Compra' : activity.type === 'refund' ? 'Reembolso' : 'Otra actividad'}
                       </span>
-                      <span className="ml-2 text-sm text-gray-500">
+                      <span className="ml-2 text-sm text-gray-900 font-medium">
                         {activity.product ? activity.product.name : 'Producto no disponible'}
                       </span>
                       {activity.product && (
                         <span className="ml-2 text-sm font-medium text-gray-900">
                           ${activity.product.price.toFixed(2)}
+                        </span>
+                      )}
+                      {activity.product?.categoryId && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {categories.find(c => c.id === activity.product?.categoryId)?.name || 'Sin categoría'}
                         </span>
                       )}
                     </div>

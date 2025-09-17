@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, ShoppingBag } from 'lucide-react';
 import { Customer, CreateCustomerInput } from '@/types/customer';
 import { Product } from '@/types/product';
 import { customerStorage, productStorage } from '@/lib/storage';
+import { ExportCustomersButton, ExportCompleteReportButton } from '@/components/ExportButton';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -98,12 +99,19 @@ export default function CustomersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Customers</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingCustomer(null)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Customer
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          {customers.length > 0 && (
+            <>
+              <ExportCustomersButton customers={customers} />
+              <ExportCompleteReportButton products={products} customers={customers} />
+            </>
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingCustomer(null)}>
+                <Plus className="mr-2 h-4 w-4" /> Add Customer
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -154,6 +162,7 @@ export default function CustomersPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Purchase Product Dialog */}

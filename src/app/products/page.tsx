@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Product, CreateProductInput } from '@/types/product';
 import { productStorage } from '@/lib/storage';
+import { ExportProductsButton } from '@/components/ExportButton';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,13 +71,17 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Products</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setEditingProduct(null)}>
-              <Plus className="mr-2 h-4 w-4" /> Add Product
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
+        <div className="flex gap-2">
+          {products.length > 0 && (
+            <ExportProductsButton products={products} />
+          )}
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setEditingProduct(null)}>
+                <Plus className="mr-2 h-4 w-4" /> Add Product
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
@@ -126,8 +131,9 @@ export default function ProductsPage() {
                 </Button>
               </div>
             </form>
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {products.length === 0 ? (

@@ -1,9 +1,11 @@
 import { Product } from '@/types/product';
 import { Customer } from '@/types/customer';
+import { Category } from '@/types/category';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'crm_products',
   CUSTOMERS: 'crm_customers',
+  CATEGORIES: 'crm_categories',
 } as const;
 
 type StorageKey = keyof typeof STORAGE_KEYS;
@@ -159,4 +161,53 @@ export const customerStorage = {
     setItem('CUSTOMERS', updatedCustomers);
     return true;
   },
+};
+
+// Category operations
+export const categoryStorage = {
+  getAll: (): Category[] => getItem('CATEGORIES'),
+  
+  getById: (id: string): Category | undefined => {
+    const categories = getItem<Category>('CATEGORIES');
+    return categories.find(c => c.id === id);
+  },
+  
+  create: (category: Omit<Category, 'id'>): Category => {
+    const categories = getItem<Category>('CATEGORIES');
+    const newCategory = {
+      ...category,
+      id: crypto.randomUUID(),
+    };
+    setItem('CATEGORIES', [...categories, newCategory]);
+    return newCategory;
+  },
+  
+  update: (id: string, updates: Partial<Omit<Category, 'id'>>): Category | null => {
+    const categories = getItem<Category>('CATEGORIES');
+    const index = categories.findIndex(c => c.id === id);
+    
+    if (index === -1) return null;
+    
+    const updatedCategory = {
+      ...categories[index],
+      ...updates,
+    };
+    
+    const updatedCategories = [...categories];
+    updatedCategories[index] = updatedCategory;
+    setItem('CATEGORIES', updatedCategories);
+    
+    return updatedCategory;
+  },
+  
+  delete: (id: string): boolean => {
+    const categories = getItem<Category>('CATEGORIES');
+    const filtered = categories.filter(c => c.id !== id);
+    
+    if (categories.length === filtered.length) return false;
+    
+    setItem('CATEGORIES', filtered);
+    return true;
+  },
+  
 };

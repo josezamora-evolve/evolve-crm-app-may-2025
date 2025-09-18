@@ -3,24 +3,52 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter } from 'lucide-react';
 import { Product, CreateProductInput } from '@/types/product';
-import { productStorage } from '@/lib/storage';
+import { Category } from '@/types/category';
+import { productStorage, categoryStorage } from '@/lib/storage';
 import { validateProduct, ValidationError } from '@/lib/validation';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductInput>({ name: '', price: 0 });
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
-  // Load products from local storage
+  // Load products and categories from database
   useEffect(() => {
-    setProducts(productStorage.getAll());
+    const loadData = async () => {
+      try {
+        const [loadedCategories, loadedProducts] = await Promise.all([
+          categoryStorage.getAll(),
+          productStorage.getAll()
+        ]);
+        setCategories(loadedCategories);
+        setProducts(loadedProducts);
+        setFilteredProducts(loadedProducts);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Filter products by category
+  useEffect(() => {
+    if (selectedCategoryFilter === 'all') {
+      setFilteredProducts(products);
+    } else if (selectedCategoryFilter === 'uncategorized') {
+      setFilteredProducts(products.filter(product => !product.categoryId));
+    } else {
+      setFilteredProducts(products.filter(product => product.categoryId === selectedCategoryFilter));
+    }
+  }, [products, selectedCategoryFilter]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -28,7 +56,13 @@ export default function ProductsPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const getCategoryName = (categoryId?: string): string => {
+    if (!categoryId) return 'Sin categoría';
+    const category = categories.find(c => c.id === categoryId);
+    return category ? category.name : 'Sin categoría';
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form data
@@ -46,40 +80,50 @@ export default function ProductsPage() {
     // Clear any previous validation errors
     setValidationErrors([]);
     
-    if (editingProduct) {
-      // Update existing product
-      const updatedProduct = productStorage.update(editingProduct.id, formData);
-      if (updatedProduct) {
-        setProducts(prev => 
-          prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-        );
+    try {
+      if (editingProduct) {
+        // Update existing product
+        const updatedProduct = await productStorage.update(editingProduct.id, formData);
+        if (updatedProduct) {
+          setProducts(prev => 
+            prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+          );
+        }
+      } else {
+        // Create new product
+        const newProduct = await productStorage.create(formData);
+        setProducts(prev => [...prev, newProduct]);
       }
-    } else {
-      // Create new product
-      const newProduct = productStorage.create(formData);
-      setProducts(prev => [...prev, newProduct]);
+      
+      // Reset form and close dialog
+      setFormData({ name: '', price: 0, categoryId: '' });
+      setEditingProduct(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
     }
-    
-    // Reset form and close dialog
-    setFormData({ name: '', price: 0 });
-    setEditingProduct(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setFormData({
       name: product.name,
-      price: product.price
+      price: product.price,
+      categoryId: product.categoryId || ''
     });
     setValidationErrors([]);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      if (productStorage.delete(id)) {
-        setProducts(prev => prev.filter(p => p.id !== id));
+      try {
+        const success = await productStorage.delete(id);
+        if (success) {
+          setProducts(prev => prev.filter(p => p.id !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
       }
     }
   };
@@ -102,7 +146,7 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Products</h2>
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingProduct(null)}>
               <Plus className="mr-2 h-4 w-4" /> Add Product
@@ -125,36 +169,25 @@ export default function ProductsPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
-                    getFieldError('name') ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                   required
                 />
-                {getFieldError('name') && (
-                  <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
-                )}
               </div>
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                  Price (máximo $10,000)
+                  Price
                 </label>
                 <input
                   type="number"
                   id="price"
                   name="price"
                   min="0"
-                  max="10000"
                   step="0.01"
                   value={formData.price}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
-                    getFieldError('price') ? 'border-red-500 bg-red-50' : 'border-gray-300'
-                  }`}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                   required
                 />
-                {getFieldError('price') && (
-                  <p className="mt-1 text-sm text-red-600">{getFieldError('price')}</p>
-                )}
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
@@ -173,19 +206,20 @@ export default function ProductsPage() {
         </Dialog>
       </div>
 
-      {products.length === 0 ? (
+      {filteredProducts.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <p className="text-gray-500">No products found. Add your first product to get started.</p>
         </div>
       ) : (
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
-            {products.map((product) => (
+            {filteredProducts.map((product) => (
               <li key={product.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
                     <p className="text-sm text-gray-500">${product.price.toFixed(2)}</p>
+                    <p className="text-xs text-blue-600">{getCategoryName(product.categoryId)}</p>
                   </div>
                   <div className="flex space-x-2">
                     <Button

@@ -55,10 +55,9 @@ export default function ProductsPage() {
     }));
   };
 
-  const getCategoryName = (categoryId?: string): string => {
-    if (!categoryId) return 'Sin categoría';
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'Sin categoría';
+  const getCategoryName = (categoryId?: string) => {
+    if (!categoryId) return null;
+    return categories.find(c => c.id === categoryId);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -227,15 +226,28 @@ export default function ProductsPage() {
                       <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
                       <p className="text-sm font-medium text-gray-900">${product.price.toFixed(2)}</p>
                     </div>
-                    {product.categoryId ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {getCategoryName(product.categoryId)}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Sin categoría
-                      </span>
-                    )}
+                    {(() => {
+                      const category = getCategoryName(product.categoryId);
+                      if (category) {
+                        return (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                            style={{
+                              backgroundColor: `${category.color || '#e5e7eb'}33`,
+                              color: category.color || '#6b7280',
+                              border: `1px solid ${category.color || '#e5e7eb'}`,
+                              marginRight: '0.25rem',
+                              marginBottom: '0.25rem'
+                            }}
+                          >
+                            {category.name}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="text-xs text-gray-500">Sin categoría</span>
+                      );
+                    })()}
                   </div>
                   <div className="flex space-x-2">
                     <Button

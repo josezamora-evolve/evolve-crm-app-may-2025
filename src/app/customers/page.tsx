@@ -18,22 +18,25 @@ export default function CustomersPage() {
   const [formData, setFormData] = useState<CreateCustomerInput>({ name: '', email: '' });
   const [selectedProductId, setSelectedProductId] = useState('');
 
-  // Load data from database
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [loadedCustomers, loadedProducts] = await Promise.all([
-          customerStorage.getAll(),
-          productStorage.getAll()
-        ]);
-        setCustomers(loadedCustomers);
-        setProducts(loadedProducts);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      }
-    };
+  // Función para cargar todos los datos
+  const loadAllData = async () => {
+    try {
+      const [loadedCustomers, loadedProducts] = await Promise.all([
+        customerStorage.getAll(),
+        productStorage.getAll()
+      ]);
+      setCustomers(loadedCustomers);
+      setProducts(loadedProducts);
+      return { customers: loadedCustomers, products: loadedProducts };
+    } catch (error) {
+      console.error('Error loading data:', error);
+      throw error;
+    }
+  };
 
-    loadData();
+  // Cargar datos iniciales
+  useEffect(() => {
+    loadAllData().catch(console.error);
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,25 +52,26 @@ export default function CustomersPage() {
     
     try {
       if (editingCustomer) {
-        // Update existing customer
-        const updatedCustomer = await customerStorage.update(editingCustomer.id, formData);
-        if (updatedCustomer) {
-          setCustomers(prev => 
-            prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c)
-          );
-        }
+        // Actualizar cliente existente
+        await customerStorage.update(editingCustomer.id, formData);
       } else {
-        // Create new customer
-        const newCustomer = await customerStorage.create(formData);
-        setCustomers(prev => [...prev, newCustomer]);
+        // Crear nuevo cliente
+        await customerStorage.create(formData);
       }
       
-      // Reset form and close dialog
+      // Recargar datos para asegurar consistencia
+      await loadAllData();
+      
+      // Resetear formulario y cerrar diálogo
       setFormData({ name: '', email: '' });
       setEditingCustomer(null);
       setIsDialogOpen(false);
+      
+      // Mostrar notificación de éxito
+      alert(editingCustomer ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente');
     } catch (error) {
       console.error('Error saving customer:', error);
+      alert(`Error al guardar el cliente: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
@@ -100,11 +104,16 @@ export default function CustomersPage() {
 
   const handlePurchaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCustomer || !selectedProductId) return;
+    if (!selectedCustomer || !selectedProductId) {
+      alert('Por favor, seleccione un cliente y un producto');
+      return;
+    }
     
     try {
       const product = await productStorage.getById(selectedProductId);
-      if (!product) return;
+      if (!product) {
+        throw new Error('Producto no encontrado');
+      }
       
       // Añadir producto al cliente
       await customerStorage.addProductToCustomer(selectedCustomer.id, selectedProductId);
@@ -112,29 +121,38 @@ export default function CustomersPage() {
       // Registrar la actividad
       await activityStorage.logPurchase(selectedCustomer, product, `Compra de ${product.name}`);
       
+      // Recargar todos los datos para asegurar consistencia
+      await loadAllData();
+      
+      // Resetear estado
       setSelectedProductId('');
       setIsPurchaseDialogOpen(false);
       
-      // Refresh customers list
-      const updatedCustomers = await customerStorage.getAll();
-      setCustomers(updatedCustomers);
+      // Mostrar notificación de éxito
+      alert(`Compra registrada correctamente para ${selectedCustomer.name}`);
     } catch (error) {
       console.error('Error processing purchase:', error);
+      alert(`Error al procesar la compra: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
   const handleRemoveProduct = async (customerId: string, productId: string) => {
-    if (window.confirm('Remove this product from the customer?')) {
-      try {
-        const success = await customerStorage.removeProductFromCustomer(customerId, productId);
-        if (success) {
-          // Refresh customers list
-          const updatedCustomers = await customerStorage.getAll();
-          setCustomers(updatedCustomers);
-        }
-      } catch (error) {
-        console.error('Error removing product:', error);
+    if (!window.confirm('¿Está seguro de eliminar este producto del cliente?')) {
+      return;
+    }
+    
+    try {
+      const success = await customerStorage.removeProductFromCustomer(customerId, productId);
+      if (success) {
+        // Recargar todos los datos
+        await loadAllData();
+        alert('Producto eliminado correctamente del cliente');
+      } else {
+        throw new Error('No se pudo eliminar el producto');
       }
+    } catch (error) {
+      console.error('Error removing product:', error);
+      alert(`Error al eliminar el producto: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 

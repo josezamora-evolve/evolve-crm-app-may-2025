@@ -10,8 +10,11 @@ import {
   Tag, 
   Activity as ActivityIcon,
   Settings,
-  Zap
+  Zap,
+  LogOut,
+  Home
 } from 'lucide-react';
+import { useAuth } from './AuthProvider';
 import {
   Sidebar,
   SidebarContent,
@@ -42,6 +45,7 @@ const activityNavigation = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { user, signOut } = useAuth();
 
   return (
     <Sidebar className="bg-white border-r border-gray-200">
@@ -62,64 +66,65 @@ export function AppSidebar() {
       
       <SidebarContent className="px-4 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 mb-2">Principal</SidebarGroupLabel>
+          <SidebarGroupLabel>Principal</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton asChild isActive={isActive} className="px-3 py-2">
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard">
+                    <Home className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 mb-2">Gestión</SidebarGroupLabel>
+          <SidebarGroupLabel>Gestión</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {managementNavigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton asChild isActive={isActive} className="px-3 py-2">
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/products">
+                    <Package className="h-4 w-4" />
+                    <span>Productos</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/customers">
+                    <Users className="h-4 w-4" />
+                    <span>Clientes</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/categories">
+                    <Tag className="h-4 w-4" />
+                    <span>Categorías</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-2 mb-2">Actividad</SidebarGroupLabel>
+          <SidebarGroupLabel>Actividad</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {activityNavigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton asChild isActive={isActive} className="px-3 py-2">
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <Link href="/dashboard/activities">
+                    <ActivityIcon className="h-4 w-4" />
+                    <span>Actividades</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

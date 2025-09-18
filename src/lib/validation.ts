@@ -11,7 +11,7 @@ export interface ValidationResult {
 }
 
 // Product validation functions
-export const validateProductName = (name: string, excludeId?: string): ValidationError | null => {
+export const validateProductName = async (name: string, excludeId?: string): Promise<ValidationError | null> => {
   if (!name || name.trim().length === 0) {
     return { field: 'name', message: 'El nombre del producto es obligatorio' };
   }
@@ -20,15 +20,20 @@ export const validateProductName = (name: string, excludeId?: string): Validatio
     return { field: 'name', message: 'El nombre del producto debe tener al menos 2 caracteres' };
   }
 
-  // Check for duplicate names
-  const existingProducts = productStorage.getAll();
-  const isDuplicate = existingProducts.some(product => 
-    product.name.toLowerCase().trim() === name.toLowerCase().trim() && 
-    product.id !== excludeId
-  );
+  // Check for duplicate names using Supabase
+  try {
+    const existingProducts = await productStorage.getAll();
+    const isDuplicate = existingProducts.some(product => 
+      product.name.toLowerCase().trim() === name.toLowerCase().trim() && 
+      product.id !== excludeId
+    );
 
-  if (isDuplicate) {
-    return { field: 'name', message: 'Ya existe un producto con este nombre. Por favor, elige un nombre diferente.' };
+    if (isDuplicate) {
+      return { field: 'name', message: 'Ya existe un producto con este nombre. Por favor, elige un nombre diferente.' };
+    }
+  } catch (error) {
+    console.error('Error validating product name:', error);
+    return { field: 'name', message: 'Error al validar el nombre del producto. Por favor, inténtalo de nuevo.' };
   }
 
   return null;
@@ -56,10 +61,10 @@ export const validateProductPrice = (price: number): ValidationError | null => {
   return null;
 };
 
-export const validateProduct = (name: string, price: number, excludeId?: string): ValidationResult => {
+export const validateProduct = async (name: string, price: number, excludeId?: string): Promise<ValidationResult> => {
   const errors: ValidationError[] = [];
 
-  const nameError = validateProductName(name, excludeId);
+  const nameError = await validateProductName(name, excludeId);
   if (nameError) errors.push(nameError);
 
   const priceError = validateProductPrice(price);
@@ -84,7 +89,7 @@ export const validateCustomerName = (name: string): ValidationError | null => {
   return null;
 };
 
-export const validateCustomerEmail = (email: string, excludeId?: string): ValidationError | null => {
+export const validateCustomerEmail = async (email: string, excludeId?: string): Promise<ValidationError | null> => {
   if (!email || email.trim().length === 0) {
     return { field: 'email', message: 'El email es obligatorio' };
   }
@@ -95,27 +100,32 @@ export const validateCustomerEmail = (email: string, excludeId?: string): Valida
     return { field: 'email', message: 'Por favor, ingresa un email válido' };
   }
 
-  // Check for duplicate emails
-  const existingCustomers = customerStorage.getAll();
-  const isDuplicate = existingCustomers.some(customer => 
-    customer.email.toLowerCase().trim() === email.toLowerCase().trim() && 
-    customer.id !== excludeId
-  );
+  // Check for duplicate emails using Supabase
+  try {
+    const existingCustomers = await customerStorage.getAll();
+    const isDuplicate = existingCustomers.some(customer => 
+      customer.email.toLowerCase().trim() === email.toLowerCase().trim() && 
+      customer.id !== excludeId
+    );
 
-  if (isDuplicate) {
-    return { field: 'email', message: 'Ya existe un cliente con este email. Por favor, usa un email diferente.' };
+    if (isDuplicate) {
+      return { field: 'email', message: 'Ya existe un cliente con este email. Por favor, usa un email diferente.' };
+    }
+  } catch (error) {
+    console.error('Error validating customer email:', error);
+    return { field: 'email', message: 'Error al validar el email. Por favor, inténtalo de nuevo.' };
   }
 
   return null;
 };
 
-export const validateCustomer = (name: string, email: string, excludeId?: string): ValidationResult => {
+export const validateCustomer = async (name: string, email: string, excludeId?: string): Promise<ValidationResult> => {
   const errors: ValidationError[] = [];
 
   const nameError = validateCustomerName(name);
   if (nameError) errors.push(nameError);
 
-  const emailError = validateCustomerEmail(email, excludeId);
+  const emailError = await validateCustomerEmail(email, excludeId);
   if (emailError) errors.push(emailError);
 
   return {

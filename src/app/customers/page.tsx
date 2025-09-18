@@ -50,7 +50,7 @@ export default function CustomersPage() {
     e.preventDefault();
     
     // Validate form data
-    const validation = validateCustomer(
+    const validation = await validateCustomer(
       formData.name, 
       formData.email, 
       editingCustomer?.id

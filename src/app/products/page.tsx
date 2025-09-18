@@ -17,6 +17,7 @@ export default function ProductsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductInput>({ name: '', price: 0 });
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   // Load products and categories from database
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function ProductsPage() {
     e.preventDefault();
     
     // Validate form data
-    const validation = validateProduct(
+    const validation = await validateProduct(
       formData.name, 
       formData.price, 
       editingProduct?.id
@@ -169,9 +170,14 @@ export default function ProductsPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('name') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('name') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700">
@@ -185,9 +191,14 @@ export default function ProductsPage() {
                   step="0.01"
                   value={formData.price}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('price') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('price') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('price')}</p>
+                )}
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

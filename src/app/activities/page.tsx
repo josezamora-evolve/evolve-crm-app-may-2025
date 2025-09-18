@@ -115,7 +115,7 @@ export default function ActivitiesPage() {
             <label className="block text-base font-medium text-gray-700">
               Operación
             </label>
-            <div className="px-4 py-2.5 text-base rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-500">
+            <div className="px-4 py-2.5 text-base rounded-lg border-2 border-gray-200 bg-white text-gray-500">
               Compras
             </div>
             <p className="text-sm text-gray-500 mt-1">

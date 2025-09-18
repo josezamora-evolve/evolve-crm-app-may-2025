@@ -15,26 +15,27 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    const loadStats = () => {
-      const totalProducts = analytics.getTotalProducts();
-      const totalCustomers = analytics.getTotalCustomers();
-      const totalRevenue = analytics.getTotalRevenue();
-      const mostSoldProducts = analytics.getMostSoldProducts(5);
+    const loadStats = async () => {
+      try {
+        const [totalProducts, totalCustomers, totalRevenue, mostSoldProducts] = await Promise.all([
+          analytics.getTotalProducts(),
+          analytics.getTotalCustomers(),
+          analytics.getTotalRevenue(),
+          analytics.getMostSoldProducts(5)
+        ]);
 
-      setStats({
-        totalProducts,
-        totalCustomers,
-        totalRevenue,
-        mostSoldProducts,
-      });
+        setStats({
+          totalProducts,
+          totalCustomers,
+          totalRevenue,
+          mostSoldProducts,
+        });
+      } catch (error) {
+        console.error('Error loading stats:', error);
+      }
     };
 
     loadStats();
-    // Actualizar stats cuando cambie el localStorage
-    const handleStorageChange = () => loadStats();
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const chartData = stats.mostSoldProducts.map(item => ({

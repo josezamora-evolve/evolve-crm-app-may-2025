@@ -18,42 +18,50 @@ export default function ActivitiesPage() {
 
   // Cargar actividades y categorías
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        // Cargar categorías
-        const loadedCategories = categoryStorage.getAll();
-        setCategories(loadedCategories);
-        
-        // Cargar y filtrar actividades
-        let allActivities = activityStorage.getAll();
-        
-        // Filtrar por cliente si es necesario
-        if (selectedCustomer !== 'all') {
-          allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
-        }
-        
-        // Filtrar por tipo de actividad si es necesario
-        if (activityType !== 'all') {
-          allActivities = allActivities.filter(a => a.type === activityType);
-        }
-        
-        // Ordenar por fecha (más reciente primero)
-        allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        
-        setActivities(allActivities);
-      } catch (error) {
-        console.error('Error al cargar actividades:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
+    loadActivities();
   }, [selectedCustomer, activityType]);
 
-  // Obtener la lista de clientes para el filtro
-  const customers = customerStorage.getAll();
+  const loadActivities = async () => {
+    setIsLoading(true);
+    try {
+      let allActivities = await activityStorage.getAll();
+      
+      // Filtrar por cliente si es necesario
+      if (selectedCustomer !== 'all') {
+        allActivities = allActivities.filter(a => a.customerId === selectedCustomer);
+      }
+      
+      // Filtrar por tipo de actividad si es necesario
+      if (activityType !== 'all') {
+        allActivities = allActivities.filter(a => a.type === activityType);
+      }
+      
+      // Ordenar por fecha (más reciente primero)
+      allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setActivities(allActivities);
+    } catch (error) {
+      console.error('Error loading activities:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Estado para clientes
+  const [customers, setCustomers] = useState<any[]>([]);
+
+  // Cargar clientes
+  useEffect(() => {
+    const loadCustomers = async () => {
+      try {
+        const loadedCustomers = await customerStorage.getAll();
+        setCustomers(loadedCustomers);
+      } catch (error) {
+        console.error('Error loading customers:', error);
+      }
+    };
+    loadCustomers();
+  }, []);
 
   const getActivityTypeColor = (type: string) => {
     switch (type) {

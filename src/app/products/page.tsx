@@ -17,13 +17,23 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductInput>({ name: '', price: 0, categoryId: '' });
 
-  // Load products and categories from local storage
+  // Load products and categories from database
   useEffect(() => {
-    const loadedCategories = categoryStorage.getAll();
-    const loadedProducts = productStorage.getAll();
-    setCategories(loadedCategories);
-    setProducts(loadedProducts);
-    setFilteredProducts(loadedProducts);
+    const loadData = async () => {
+      try {
+        const [loadedCategories, loadedProducts] = await Promise.all([
+          categoryStorage.getAll(),
+          productStorage.getAll()
+        ]);
+        setCategories(loadedCategories);
+        setProducts(loadedProducts);
+        setFilteredProducts(loadedProducts);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
+    };
+
+    loadData();
   }, []);
 
   // Filter products by category
@@ -51,27 +61,31 @@ export default function ProductsPage() {
     return category ? category.name : 'Sin categoría';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingProduct) {
-      // Update existing product
-      const updatedProduct = productStorage.update(editingProduct.id, formData);
-      if (updatedProduct) {
-        setProducts(prev => 
-          prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
-        );
+    try {
+      if (editingProduct) {
+        // Update existing product
+        const updatedProduct = await productStorage.update(editingProduct.id, formData);
+        if (updatedProduct) {
+          setProducts(prev => 
+            prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
+          );
+        }
+      } else {
+        // Create new product
+        const newProduct = await productStorage.create(formData);
+        setProducts(prev => [...prev, newProduct]);
       }
-    } else {
-      // Create new product
-      const newProduct = productStorage.create(formData);
-      setProducts(prev => [...prev, newProduct]);
+      
+      // Reset form and close dialog
+      setFormData({ name: '', price: 0, categoryId: '' });
+      setEditingProduct(null);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error('Error saving product:', error);
     }
-    
-    // Reset form and close dialog
-    setFormData({ name: '', price: 0, categoryId: '' });
-    setEditingProduct(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (product: Product) => {
@@ -84,10 +98,15 @@ export default function ProductsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
-      if (productStorage.delete(id)) {
-        setProducts(prev => prev.filter(p => p.id !== id));
+      try {
+        const success = await productStorage.delete(id);
+        if (success) {
+          setProducts(prev => prev.filter(p => p.id !== id));
+        }
+      } catch (error) {
+        console.error('Error deleting product:', error);
       }
     }
   };

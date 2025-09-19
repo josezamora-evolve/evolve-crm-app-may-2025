@@ -17,20 +17,51 @@ export default function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<CreateCustomerInput>({ name: '', email: '' });
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Función para cargar todos los datos
   const loadAllData = async () => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
+      console.log('Iniciando carga de datos...');
+      
+      // Cargar clientes y productos en paralelo
       const [loadedCustomers, loadedProducts] = await Promise.all([
-        customerStorage.getAll(),
-        productStorage.getAll()
+        customerStorage.getAll().catch(err => {
+          console.error('Error cargando clientes:', err);
+          return [];
+        }),
+        productStorage.getAll().catch(err => {
+          console.error('Error cargando productos:', err);
+          return [];
+        })
       ]);
-      setCustomers(loadedCustomers);
-      setProducts(loadedProducts);
+      
+      console.log('Clientes cargados:', loadedCustomers);
+      console.log('Productos cargados:', loadedProducts);
+      
+      // Verificar la estructura de los clientes
+      if (loadedCustomers && loadedCustomers.length > 0) {
+        console.log('Primer cliente:', loadedCustomers[0]);
+        console.log('Productos del primer cliente:', loadedCustomers[0]?.purchasedProducts);
+      } else {
+        console.log('No se encontraron clientes');
+      }
+      
+      setCustomers(loadedCustomers || []);
+      setProducts(loadedProducts || []);
+      
       return { customers: loadedCustomers, products: loadedProducts };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido al cargar los datos';
       console.error('Error loading data:', error);
-      throw error;
+      setError(errorMessage);
+      return { customers: [], products: [] };
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -156,6 +187,9 @@ export default function CustomersPage() {
     }
   };
 
+  // Debug: Verificar los clientes antes de renderizar
+  console.log('Clientes antes de renderizar:', customers);
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -264,77 +298,158 @@ export default function CustomersPage() {
         </DialogContent>
       </Dialog>
 
-      {customers.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500">No customers found. Add your first customer to get started.</p>
-        </div>
-      ) : (
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {customers.map((customer) => (
-              <li key={customer.id} className="px-4 py-4 sm:px-6">
-                <div className="flex flex-col space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{customer.name}</h3>
-                      <p className="text-sm text-gray-500">{customer.email}</p>
-                    </div>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setIsPurchaseDialogOpen(true);
-                        }}
-                      >
-                        <ShoppingBag className="h-4 w-4 mr-1" /> Add Product
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(customer)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(customer.id)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {customer.purchasedProducts.length > 0 && (
-                    <div className="mt-2 pl-4 border-l-2 border-gray-200">
-                      <h4 className="text-sm font-medium text-gray-700 mb-1">Purchased Products:</h4>
-                      <ul className="space-y-1">
-                        {customer.purchasedProducts.map(product => (
-                          <li key={product.id} className="flex justify-between items-center text-sm">
-                            <span>
-                              {product.name} - ${product.price.toFixed(2)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveProduct(customer.id, product.id)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+      {/* Mostrar estado de carga */}
+      {isLoading && (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Cargando clientes...</p>
         </div>
       )}
+
+      {/* Mostrar mensaje de error si existe */}
+      {error && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">
+                {error}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mostrar lista de clientes o mensaje de "sin clientes" */}
+      {!isLoading && customers.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+          <p className="text-gray-500">No se encontraron clientes. Agrega tu primer cliente para comenzar.</p>
+          <Button 
+            className="mt-4"
+            onClick={() => setIsDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" /> Agregar Cliente
+          </Button>
+        </div>
+      )}
+
+    {/* Mostrar mensaje de error si existe */}
+    {error && (
+      <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <p className="text-sm text-red-700">
+              {error}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Mostrar mensaje cuando no hay clientes */}
+    {!isLoading && customers.length === 0 && (
+      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <p className="text-gray-500">No se encontraron clientes. Usa el botón "Add Customer" en la parte superior para agregar un nuevo cliente.</p>
+      </div>
+    )}
+    {/* Mostrar lista de clientes */}
+    {!isLoading && customers.length > 0 && (
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {customers.map((customer) => (
+            <li key={customer.id} className="px-4 py-4 sm:px-6">
+              <div className="flex flex-col space-y-2">
+                {/* Customer header */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">{customer.name}</h3>
+                    <p className="text-sm text-gray-500">{customer.email}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCustomer(customer);
+                        setIsPurchaseDialogOpen(true);
+                      }}
+                    >
+                      <ShoppingBag className="h-4 w-4 mr-1" /> Add Product
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(customer)}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(customer.id)}
+                      className="text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Purchased products list */}
+                {customer.purchasedProducts && customer.purchasedProducts.length > 0 && (
+                  <div className="mt-3 pl-4 border-l-2 border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Productos adquiridos:</h4>
+                    <ul className="space-y-3">
+                      {customer.purchasedProducts.map(product => (
+                        <li key={product.id} className="bg-gray-50 rounded-lg p-3 shadow-sm">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-gray-900">{product.name}</span>
+                                {product.categories && product.categories.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {product.categories.map(category => (
+                                      <span 
+                                        key={category.id}
+                                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                      >
+                                        {category.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-600">${product.price?.toFixed(2) || '0.00'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveProduct(customer.id, product.id);
+                              }}
+                              className="text-red-600 hover:text-red-800 text-sm font-medium"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )}
     </div>
   );
-}

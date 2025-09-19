@@ -17,9 +17,15 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState<CreateProductInput>({ name: '', price: 0, categoryId: '' });
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   // Load products and categories from database
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
       try {
         const [loadedCategories, loadedProducts] = await Promise.all([
           categoryStorage.getAll(),
@@ -30,6 +36,13 @@ export default function ProductsPage() {
         setFilteredProducts(loadedProducts);
       } catch (error) {
         console.error('Error loading data:', error);
+        setError(
+          error instanceof Error 
+            ? error.message 
+            : 'Failed to load products. Please try again later.'
+        );
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -55,14 +68,30 @@ export default function ProductsPage() {
     }));
   };
 
-  const getCategoryName = (categoryId?: string): string => {
-    if (!categoryId) return 'Sin categoría';
-    const category = categories.find(c => c.id === categoryId);
-    return category ? category.name : 'Sin categoría';
+  const getCategoryName = (categoryId?: string) => {
+    if (!categoryId) return null;
+    return categories.find(c => c.id === categoryId);
   };
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form
+    if (!formData.name.trim()) {
+      setSubmitError('Product name is required');
+      return;
+    }
+    
+    if (formData.price < 0) {
+      setSubmitError('Price cannot be negative');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitError(null);
     
     try {
       if (editingProduct) {
@@ -72,11 +101,15 @@ export default function ProductsPage() {
           setProducts(prev => 
             prev.map(p => p.id === updatedProduct.id ? updatedProduct : p)
           );
+          // Show success message or toast here if needed
+        } else {
+          throw new Error('Failed to update product');
         }
       } else {
         // Create new product
         const newProduct = await productStorage.create(formData);
         setProducts(prev => [...prev, newProduct]);
+        // Show success message or toast here if needed
       }
       
       // Reset form and close dialog
@@ -85,6 +118,13 @@ export default function ProductsPage() {
       setIsDialogOpen(false);
     } catch (error) {
       console.error('Error saving product:', error);
+      setSubmitError(
+        error instanceof Error 
+          ? error.message 
+          : 'An error occurred while saving the product. Please try again.'
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -132,21 +172,33 @@ export default function ProductsPage() {
               ))}
             </select>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingProduct(null);
+              setFormData({ name: '', price: 0, categoryId: '' });
+              setSubmitError(null);
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button onClick={() => setEditingProduct(null)}>
-                <Plus className="mr-2 h-4 w-4" /> Add Product
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </DialogTitle>
+                <DialogTitle>{editingProduct ? 'Edit' : 'Add New'} Product</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
+                {submitError && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 text-sm text-red-700">
+                    {submitError}
+                  </div>
+                )}
+                
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="name" className="block text-sm font-medium mb-1">
                     Product Name
                   </label>
                   <input
@@ -155,39 +207,42 @@ export default function ProductsPage() {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    className="w-full p-2 border rounded"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="price" className="block text-sm font-medium mb-1">
                     Price
                   </label>
                   <input
                     type="number"
                     id="price"
                     name="price"
-                    min="0"
-                    step="0.01"
                     value={formData.price}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    step="0.01"
+                    min="0"
+                    className="w-full p-2 border rounded"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div>
-                  <label htmlFor="categoryId" className="block text-sm font-medium text-gray-700">
-                    Category
+                  <label htmlFor="categoryId" className="block text-sm font-medium mb-1">
+                    Category (Optional)
                   </label>
                   <select
                     id="categoryId"
                     name="categoryId"
                     value={formData.categoryId}
                     onChange={handleInputChange}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                    className="w-full p-2 border rounded"
+                    disabled={isSubmitting}
                   >
-                    <option value="">Sin categoría</option>
-                    {categories.map((category) => (
+                    <option value="">Select a category</option>
+                    {categories.map(category => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
@@ -198,12 +253,31 @@ export default function ProductsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
+                    onClick={() => {
+                      setIsDialogOpen(false);
+                      setEditingProduct(null);
+                      setFormData({ name: '', price: 0, categoryId: '' });
+                      setSubmitError(null);
+                    }}
+                    disabled={isSubmitting}
                   >
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    {editingProduct ? 'Update' : 'Create'} Product
+                  <Button 
+                    type="submit"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {editingProduct ? 'Updating...' : 'Creating...'}
+                      </>
+                    ) : (
+                      <>{editingProduct ? 'Update' : 'Create'} Product</>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -222,10 +296,33 @@ export default function ProductsPage() {
             {filteredProducts.map((product) => (
               <li key={product.id} className="px-4 py-4 sm:px-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
-                    <p className="text-sm text-gray-500">${product.price.toFixed(2)}</p>
-                    <p className="text-xs text-blue-600">{getCategoryName(product.categoryId)}</p>
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
+                      <p className="text-sm font-medium text-gray-900">${product.price.toFixed(2)}</p>
+                    </div>
+                    {(() => {
+                      const category = getCategoryName(product.categoryId);
+                      if (category) {
+                        return (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
+                            style={{
+                              backgroundColor: `${category.color || '#e5e7eb'}33`,
+                              color: category.color || '#6b7280',
+                              border: `1px solid ${category.color || '#e5e7eb'}`,
+                              marginRight: '0.25rem',
+                              marginBottom: '0.25rem'
+                            }}
+                          >
+                            {category.name}
+                          </span>
+                        );
+                      }
+                      return (
+                        <span className="text-xs text-gray-500">Sin categoría</span>
+                      );
+                    })()}
                   </div>
                   <div className="flex space-x-2">
                     <Button

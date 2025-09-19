@@ -1,14 +1,16 @@
-interface BarChartData {
+export interface BarChartData {
   name: string;
   value: number;
+  color?: string;
 }
 
 interface SimpleBarChartProps {
   data: BarChartData[];
   title: string;
+  showColors?: boolean;
 }
 
-export function SimpleBarChart({ data, title }: SimpleBarChartProps) {
+export function SimpleBarChart({ data, title, showColors = false }: SimpleBarChartProps) {
   const maxValue = Math.max(...data.map(item => item.value));
 
   return (
@@ -27,9 +29,10 @@ export function SimpleBarChart({ data, title }: SimpleBarChartProps) {
                 <div className="flex-1 flex items-center">
                   <div className="w-full bg-gray-200 rounded-full h-2 mr-3">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="h-2 rounded-full transition-all duration-300"
                       style={{
                         width: `${maxValue > 0 ? (item.value / maxValue) * 100 : 0}%`,
+                        backgroundColor: showColors && item.color ? item.color : '#2563eb',
                       }}
                     />
                   </div>

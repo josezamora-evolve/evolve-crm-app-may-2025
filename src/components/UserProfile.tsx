@@ -2,7 +2,7 @@
 
 import { useAuth } from './AuthProvider'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { User, LogOut, Settings, ChevronDown } from 'lucide-react'
+import { LogOut, Settings, ChevronDown } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { profileService } from '@/lib/profile'
 import { Database } from '@/lib/database.types'

@@ -102,8 +102,8 @@ export function UserProfile() {
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-2 transition-colors cursor-pointer">
         <div className="text-right">
-          <p className="text-xs text-gray-500">{user.email}</p>
           <p className="text-sm font-medium text-gray-900">{getDisplayName()}</p>
+          <p className="text-xs text-gray-500">{user.email}</p>
         </div>
         <Avatar className="h-8 w-8">
           <AvatarImage 

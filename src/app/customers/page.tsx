@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, ShoppingBag } from 'lucide-react';
 import { Customer, CreateCustomerInput } from '@/types/customer';
 import { Product } from '@/types/product';
 import { customerStorage, productStorage, activityStorage } from '@/lib/storage';
+import { validateCustomer, ValidationError } from '@/lib/validation';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -17,6 +18,7 @@ export default function CustomersPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<CreateCustomerInput>({ name: '', email: '' });
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
   // Load data from database
   useEffect(() => {
@@ -46,6 +48,21 @@ export default function CustomersPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form data
+    const validation = await validateCustomer(
+      formData.name, 
+      formData.email, 
+      editingCustomer?.id
+    );
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    
+    // Clear any previous validation errors
+    setValidationErrors([]);
     
     try {
       if (editingCustomer) {
@@ -77,6 +94,7 @@ export default function CustomersPage() {
       name: customer.name,
       email: customer.email
     });
+    setValidationErrors([]);
     setIsDialogOpen(true);
   };
 
@@ -134,11 +152,25 @@ export default function CustomersPage() {
     }
   };
 
+  const getFieldError = (fieldName: string): string | null => {
+    const error = validationErrors.find(err => err.field === fieldName);
+    return error ? error.message : null;
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setValidationErrors([]);
+      setFormData({ name: '', email: '' });
+      setEditingCustomer(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Customers</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button onClick={() => setEditingCustomer(null)}>
               <Plus className="mr-2 h-4 w-4" /> Add Customer
@@ -161,9 +193,14 @@ export default function CustomersPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('name') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('name') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
@@ -175,9 +212,14 @@ export default function CustomersPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
+                  className={`mt-1 block w-full rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border ${
+                    getFieldError('email') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {getFieldError('email') && (
+                  <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>
+                )}
               </div>
               <div className="flex justify-end space-x-2 pt-4">
                 <Button

@@ -14,5 +14,5 @@ export interface ChatInput {
 export interface ChatResponse {
     success: boolean;
     message: string;
-    data?: any;
+    data?: unknown;
 }

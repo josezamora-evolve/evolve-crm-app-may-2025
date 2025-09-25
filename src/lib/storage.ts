@@ -87,7 +87,7 @@ export const productStorage = {
     const user = await auth.getCurrentUser();
     if (!user) throw new Error('User not authenticated');
 
-    const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.price !== undefined) updateData.price = updates.price;
     if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId;
@@ -159,12 +159,16 @@ export const customerStorage = {
           .eq('customer_id', customer.id)
           .eq('user_id', user.id);
         
-        const purchasedProducts = (customerProducts || []).map((cp: any) => ({
-          id: cp.products.id,
-          name: cp.products.name,
-          price: cp.products.price,
-          categoryId: cp.products.category_id || undefined
-        }));
+        type CustomerProductRow = { products: { id: string; name: string; price: number; category_id?: string | null } | Array<{ id: string; name: string; price: number; category_id?: string | null }> };
+        const purchasedProducts = (customerProducts || []).map((cp: CustomerProductRow) => {
+          const prod = Array.isArray(cp.products) ? cp.products[0] : cp.products;
+          return {
+            id: prod?.id,
+            name: prod?.name,
+            price: prod?.price,
+            categoryId: prod?.category_id || undefined
+          };
+        });
         
         return {
           id: customer.id,
@@ -203,12 +207,15 @@ export const customerStorage = {
       id: data.id,
       name: data.name,
       email: data.email,
-      purchasedProducts: data.customer_products.map((cp: any) => ({
-        id: cp.products.id,
-        name: cp.products.name,
-        price: cp.products.price,
-        categoryId: cp.products.category_id
-      }))
+      purchasedProducts: data.customer_products.map((cp: { products: { id: string; name: string; price: number; category_id?: string | null } | Array<{ id: string; name: string; price: number; category_id?: string | null }> }) => {
+        const prod = Array.isArray(cp.products) ? cp.products[0] : cp.products;
+        return {
+          id: prod?.id,
+          name: prod?.name,
+          price: prod?.price,
+          categoryId: prod?.category_id
+        };
+      })
     };
   },
   
@@ -243,7 +250,7 @@ export const customerStorage = {
     const user = await auth.getCurrentUser();
     if (!user) throw new Error('User not authenticated');
 
-    const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.email !== undefined) updateData.email = updates.email;
     
@@ -434,7 +441,7 @@ export const categoryStorage = {
     const user = await auth.getCurrentUser();
     if (!user) throw new Error('User not authenticated');
 
-    const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.color !== undefined) updateData.color = updates.color;

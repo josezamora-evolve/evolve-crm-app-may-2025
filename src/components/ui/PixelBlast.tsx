@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { EffectComposer, EffectPass, RenderPass, Effect } from 'postprocessing';
 
-type WebGL2RenderingContext = WebGL2RenderingContext;
+// Use the global WebGL2RenderingContext type when available
 
 type PixelBlastVariant = 'square' | 'circle' | 'triangle' | 'diamond';
 
@@ -390,7 +390,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     touch?: ReturnType<typeof createTouchTexture>;
     liquidEffect?: Effect;
   } | null>(null);
-  const prevConfigRef = useRef<any>(null);
+  const prevConfigRef = useRef<Record<string, unknown> | null>(null);
   
   useEffect(() => {
     const container = containerRef.current;
@@ -398,13 +398,13 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
     
     speedRef.current = speed;
     const needsReinitKeys = ['antialias', 'liquid', 'noiseAmount'];
-    const cfg = { antialias, liquid, noiseAmount };
+  const cfg: Record<string, unknown> = { antialias, liquid, noiseAmount };
     let mustReinit = false;
     
     if (!threeRef.current) mustReinit = true;
     else if (prevConfigRef.current) {
       for (const k of needsReinitKeys) {
-        if (prevConfigRef.current[k] !== (cfg as any)[k]) {
+        if (prevConfigRef.current[k] !== cfg[k]) {
           mustReinit = true;
           break;
         }
@@ -508,7 +508,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
 
       // Generate random time offset for animation
       const randomFloat = () => {
-        if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
+        if (typeof window !== 'undefined' && (window as unknown as { crypto?: Crypto }).crypto?.getRandomValues) {
           const u32 = new Uint32Array(1);
           window.crypto.getRandomValues(u32);
           return u32[0] / 0xffffffff;
@@ -569,7 +569,7 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
         noisePass.renderToScreen = true;
         
         if (composer && composer.passes.length > 0) {
-          composer.passes.forEach(p => ((p as any).renderToScreen = false));
+          composer.passes.forEach(p => ((p as unknown as { renderToScreen?: boolean }).renderToScreen = false));
         }
         
         composer.addPass(noisePass);
@@ -626,7 +626,8 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
 
         // Update liquid effect time if active
         if (liquidEffect) {
-          (liquidEffect as any).uniforms.get('uTime').value = uniforms.uTime.value;
+          const u = (liquidEffect as unknown as { uniforms?: Map<string, THREE.Uniform> }).uniforms?.get('uTime');
+          if (u) (u as unknown as { value: number }).value = uniforms.uTime.value;
         }
 
         // Render with post-processing if enabled, otherwise render directly
@@ -636,11 +637,12 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
           
           // Update time uniform for all effects
           composer.passes.forEach(p => {
-            const effs = (p as any).effects;
+            const effs = (p as unknown as { effects?: unknown }).effects as unknown[] | undefined;
             if (effs) {
-              effs.forEach((eff: any) => {
-                const u = eff.uniforms?.get('uTime');
-                if (u) u.value = uniforms.uTime.value;
+              effs.forEach((eff) => {
+                const uniformsMap = (eff as unknown as { uniforms?: Map<string, THREE.Uniform> }).uniforms;
+                const u = uniformsMap?.get('uTime');
+                if (u) (u as unknown as { value: number }).value = uniforms.uTime.value;
               });
             }
           });
@@ -697,11 +699,12 @@ const PixelBlast: React.FC<PixelBlastProps> = ({
       
       // Update liquid effect settings if active
       if (t.liquidEffect) {
-        const uStrength = (t.liquidEffect as any).uniforms.get('uStrength');
-        if (uStrength) uStrength.value = liquidStrength;
+        const uniformsMap = (t.liquidEffect as unknown as { uniforms?: Map<string, THREE.Uniform> }).uniforms;
+        const uStrength = uniformsMap?.get('uStrength');
+        if (uStrength) uStrength.value = liquidStrength as number;
         
-        const uFreq = (t.liquidEffect as any).uniforms.get('uFreq');
-        if (uFreq) uFreq.value = liquidWobbleSpeed;
+        const uFreq = uniformsMap?.get('uFreq');
+        if (uFreq) uFreq.value = liquidWobbleSpeed as number;
       }
       
       // Update touch texture radius if active

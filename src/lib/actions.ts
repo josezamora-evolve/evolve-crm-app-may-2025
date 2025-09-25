@@ -40,7 +40,7 @@ export async function checkN8NHealth(): Promise<{ isOnline: boolean; error?: str
 
 // Categories
 export async function getCategories() {
-  return withUser(async (userId) => {
+  return withUser(async (_) => {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('categories')

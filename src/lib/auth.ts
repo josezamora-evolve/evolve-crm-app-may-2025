@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/client'
-import { AuthError, User } from '@supabase/supabase-js'
+import { AuthError, User, Session } from '@supabase/supabase-js'
+import type { AuthChangeEvent } from '@supabase/supabase-js'
 
 export interface AuthResponse {
   user: User | null
@@ -67,7 +68,7 @@ export const auth = {
   // Listen to auth changes
   onAuthStateChange(callback: (user: User | null) => void) {
     const supabase = createClient()
-    return supabase.auth.onAuthStateChange((event: any, session: any) => {
+    return supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       callback(session?.user ?? null)
     })
   }

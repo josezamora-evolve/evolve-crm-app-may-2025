@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Activity } from '@/types/activity';
+import { Customer } from '@/types/customer';
 import { activityStorage } from '@/lib/storage';
 import { customerStorage } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -12,11 +13,6 @@ export default function ActivitiesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
   const [activityType, setActivityType] = useState<string>('all');
-
-  // Cargar actividades
-  useEffect(() => {
-    loadActivities();
-  }, [selectedCustomer, activityType]);
 
   const loadActivities = async () => {
     setIsLoading(true);
@@ -45,10 +41,11 @@ export default function ActivitiesPage() {
   };
 
   // Estado para clientes
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Cargar clientes
   useEffect(() => {
+    loadActivities();
     const loadCustomers = async () => {
       try {
         const loadedCustomers = await customerStorage.getAll();

@@ -67,10 +67,19 @@ export function ChatBox() {
                 setInput('');
                 
                 // Add bot response to chat
+                const extractChatOutput = (data: unknown): string => {
+                    if (!data || typeof data !== 'object') return 'No response received';
+                    const d = data as Record<string, unknown>;
+                    const output = d.output as Record<string, unknown> | undefined;
+                    if (!output) return 'No response received';
+                    const chatOut = output.chatOutput ?? output.message;
+                    return typeof chatOut === 'string' ? chatOut : 'No response received';
+                };
+
                 const botMessage: ChatMessage = {
                     id: (Date.now() + 1).toString(),
                     sessionId: user.id,
-                    message: response.data?.output?.chatOutput || 'No response received',
+                    message: extractChatOutput(response.data),
                     timestamp: new Date().toISOString(),
                     isUser: false
                 };

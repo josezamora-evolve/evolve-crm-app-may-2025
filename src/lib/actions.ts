@@ -1,5 +1,8 @@
 'use server';
 
+import { createClient } from '@/utils/supabase/server'
+import { withUser } from './user'
+
 interface N8NHealthResponse {
   status: string;
 }
@@ -17,8 +20,7 @@ export async function checkN8NHealth(): Promise<{ isOnline: boolean; error?: str
       headers: {
         'Content-Type': 'application/json',
       },
-      // Add timeout to prevent hanging requests
-      signal: AbortSignal.timeout(5000), // 5 second timeout
+      signal: AbortSignal.timeout(5000),
     });
 
     if (response.ok) {
@@ -34,4 +36,122 @@ export async function checkN8NHealth(): Promise<{ isOnline: boolean; error?: str
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
+}
+
+// Categories
+export async function getCategories() {
+  return withUser(async (_) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      // No need to filter by user_id here since RLS will handle it
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  })
+}
+
+export async function createCategory(category: { name: string; description?: string; color?: string }) {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ ...category, user_id: userId }])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  })
+}
+
+// Products
+export async function getProducts() {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('products')
+      .select('*, category:categories(name)')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  })
+}
+
+export async function createProduct(product: { name: string; price: number; category_id?: string }) {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('products')
+      .insert([{ ...product, user_id: userId }])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  })
+}
+
+// Customers
+export async function getCustomers() {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  })
+}
+
+export async function createCustomer(customer: { name: string; email: string }) {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('customers')
+      .insert([{ ...customer, user_id: userId }])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  })
+}
+
+// Customer Products
+export async function getCustomerProducts(customerId: string) {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('customer_products')
+      .select('*, product:products(*)')
+      .eq('customer_id', customerId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data
+  })
+}
+
+export async function addProductToCustomer(customerId: string, productId: string) {
+  return withUser(async (userId) => {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('customer_products')
+      .insert([{ 
+        customer_id: customerId, 
+        product_id: productId,
+        user_id: userId 
+      }])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  })
 }

@@ -37,29 +37,47 @@ export const auth = {
   // Sign in with Google
   async signInWithGoogle() {
     const supabase = createClient()
-    // Get the current URL origin or use the environment variable
-    const siteUrl = 
-      typeof window !== 'undefined' 
-        ? window.location.origin 
-        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
     
-    // Ensure the URL doesn't have a trailing slash
+    // Get the current URL origin or use the environment variables
+    let siteUrl = 'http://localhost:3000' // Default fallback
+    
+    if (typeof window !== 'undefined') {
+      // Client-side: use window.location.origin
+      siteUrl = window.location.origin
+    } else {
+      // Server-side: try environment variables in order of preference
+      siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                (process?.env?.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : null) || 
+                'http://localhost:3000'
+    }
+    
+    // Ensure the URL has the correct protocol and no trailing slash
+    if (!siteUrl.startsWith('http')) {
+      siteUrl = `https://${siteUrl}`
+    }
     const cleanSiteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl
     const redirectTo = `${cleanSiteUrl}/auth/callback`
     
-    console.log('Redirecting to:', redirectTo) // For debugging
+    console.log('Using redirect URL:', redirectTo) // For debugging
     
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
-      },
-    })
-    return { data, error }
+      })
+      
+      if (error) throw error
+      return { data, error: null }
+    } catch (error) {
+      console.error('Google sign-in error:', error)
+      return { data: null, error: error as Error }
+    }
   },
 
   // Sign out

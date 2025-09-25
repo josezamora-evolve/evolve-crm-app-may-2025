@@ -158,7 +158,7 @@ export const customerStorage = {
           `)
           .eq('customer_id', customer.id)
           .eq('user_id', user.id);
-        
+
         type CustomerProductRow = { products: { id: string; name: string; price: number; category_id?: string | null } | Array<{ id: string; name: string; price: number; category_id?: string | null }> };
         const purchasedProducts = (customerProducts || []).map((cp: CustomerProductRow) => {
           const prod = Array.isArray(cp.products) ? cp.products[0] : cp.products;
@@ -169,7 +169,7 @@ export const customerStorage = {
             categoryId: prod?.category_id || undefined
           };
         });
-        
+
         return {
           id: customer.id,
           name: customer.name,
@@ -178,7 +178,7 @@ export const customerStorage = {
         };
       })
     );
-    
+
     return customersWithProducts;
   },
   
@@ -294,7 +294,7 @@ export const customerStorage = {
     if (!user) throw new Error('User not authenticated');
 
     const supabase = createClient()
-    
+
     // Check if relationship already exists
     const { data: existing } = await supabase
       .from('customer_products')
@@ -343,7 +343,7 @@ export const customerStorage = {
         product_id: productId,
         user_id: user.id
       });
-    
+
     return !error;
   },
 
@@ -358,7 +358,7 @@ export const customerStorage = {
       .eq('customer_id', customerId)
       .eq('product_id', productId)
       .eq('user_id', user.id);
-    
+
     return !error;
   }
 };

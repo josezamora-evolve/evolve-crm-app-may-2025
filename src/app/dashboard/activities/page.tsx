@@ -12,7 +12,8 @@ export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
-  const [activityType, setActivityType] = useState<string>('all');
+  // Removed unused setActivityType since we're not using it for now
+  const [activityType] = useState<string>('all');
 
   const loadActivities = async () => {
     setIsLoading(true);

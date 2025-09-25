@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Activity } from '@/types/activity';
+import { Customer } from '@/types/customer';
 import { activityStorage } from '@/lib/storage';
 import { customerStorage } from '@/lib/storage';
 import { format } from 'date-fns';
@@ -11,14 +12,10 @@ export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<string>('all');
-  const [activityType, setActivityType] = useState<string>('all');
+  // Removed unused setActivityType since we're not using it for now
+  const [activityType] = useState<string>('all');
 
-  // Cargar actividades
-  useEffect(() => {
-    loadActivities();
-  }, [selectedCustomer, activityType]);
-
-  const loadActivities = async () => {
+  const loadActivities = useCallback(async () => {
     setIsLoading(true);
     try {
       let allActivities = await activityStorage.getAll();
@@ -42,10 +39,15 @@ export default function ActivitiesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedCustomer, activityType]);
+
+  // Cargar actividades
+  useEffect(() => {
+    loadActivities();
+  }, [loadActivities]);
 
   // Estado para clientes
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Cargar clientes
   useEffect(() => {

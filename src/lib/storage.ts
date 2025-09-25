@@ -68,7 +68,7 @@ export const productStorage = {
   },
   
   update: async (id: string, updates: Partial<Omit<Product, 'id'>>): Promise<Product | null> => {
-    const updateData: any = {};
+    const updateData: { name?: string; price?: number; category_id?: string | null } = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.price !== undefined) updateData.price = updates.price;
     if (updates.categoryId !== undefined) updateData.category_id = updates.categoryId || null;
@@ -124,7 +124,7 @@ export const customerStorage = {
       id: item.id,
       name: item.name,
       email: item.email,
-      purchasedProducts: item.customer_products.map((cp: any) => ({
+      purchasedProducts: item.customer_products.map((cp: { products: { id: string; name: string; price: number; category_id: string | null } }) => ({
         id: cp.products.id,
         name: cp.products.name,
         price: cp.products.price,
@@ -153,7 +153,7 @@ export const customerStorage = {
       id: data.id,
       name: data.name,
       email: data.email,
-      purchasedProducts: data.customer_products.map((cp: any) => ({
+      purchasedProducts: data.customer_products.map((cp: { products: { id: string; name: string; price: number; category_id: string | null } }) => ({
         id: cp.products.id,
         name: cp.products.name,
         price: cp.products.price,
@@ -185,7 +185,7 @@ export const customerStorage = {
   },
   
   update: async (id: string, updates: Partial<Omit<Customer, 'id'>>): Promise<Customer | null> => {
-    const updateData: any = {};
+    const updateData: { name?: string; email?: string } = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.email !== undefined) updateData.email = updates.email;
     
@@ -209,7 +209,7 @@ export const customerStorage = {
       id: data.id,
       name: data.name,
       email: data.email,
-      purchasedProducts: data.customer_products.map((cp: any) => ({
+      purchasedProducts: data.customer_products.map((cp: { products: { id: string; name: string; price: number; category_id: string | null } }) => ({
         id: cp.products.id,
         name: cp.products.name,
         price: cp.products.price,
@@ -323,7 +323,7 @@ export const categoryStorage = {
   },
   
   update: async (id: string, updates: Partial<Omit<Category, 'id'>>): Promise<Category | null> => {
-    const updateData: any = {};
+    const updateData: { name?: string; description?: string; color?: string } = {};
     if (updates.name !== undefined) updateData.name = updates.name;
     if (updates.description !== undefined) updateData.description = updates.description;
     if (updates.color !== undefined) updateData.color = updates.color;

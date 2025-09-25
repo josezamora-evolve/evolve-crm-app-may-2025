@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Activity } from '@/types/activity';
 import { Customer } from '@/types/customer';
 import { activityStorage } from '@/lib/storage';
@@ -15,7 +15,7 @@ export default function ActivitiesPage() {
   // Removed unused setActivityType since we're not using it for now
   const [activityType] = useState<string>('all');
 
-  const loadActivities = useCallback(async () => {
+  const loadActivities = async () => {
     setIsLoading(true);
     try {
       let allActivities = await activityStorage.getAll();
@@ -39,18 +39,14 @@ export default function ActivitiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedCustomer, activityType]);
-
-  // Cargar actividades
-  useEffect(() => {
-    loadActivities();
-  }, [loadActivities]);
+  };
 
   // Estado para clientes
   const [customers, setCustomers] = useState<Customer[]>([]);
 
   // Cargar clientes
   useEffect(() => {
+    loadActivities();
     const loadCustomers = async () => {
       try {
         const loadedCustomers = await customerStorage.getAll();
@@ -117,7 +113,7 @@ export default function ActivitiesPage() {
             <label className="block text-base font-medium text-gray-700">
               Operación
             </label>
-            <div className="px-4 py-2.5 text-base rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-500">
+            <div className="px-4 py-2.5 text-base rounded-lg border-2 border-gray-200 bg-white text-gray-500">
               Compras
             </div>
             <p className="text-sm text-gray-500 mt-1">

@@ -12,7 +12,7 @@ export function SimpleBarChart({ data, title }: SimpleBarChartProps) {
   const maxValue = Math.max(...data.map(item => item.value));
 
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
+    <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200">
       <div className="px-4 py-5 sm:p-6">
         <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">{title}</h3>
         {data.length === 0 ? (

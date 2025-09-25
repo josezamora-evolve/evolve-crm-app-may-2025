@@ -12,7 +12,7 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, trend }: StatCardProps) {
   return (
-    <div className="bg-white overflow-hidden shadow rounded-lg">
+    <div className="bg-white overflow-hidden shadow rounded-lg border border-gray-200">
       <div className="p-5">
         <div className="flex items-center">
           <div className="flex-shrink-0">

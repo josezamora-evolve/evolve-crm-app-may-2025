@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { auth } from '@/lib/auth'
 import { Eye, EyeOff } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
+import PixelBlast from '@/components/ui/PixelBlast'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -63,8 +64,21 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <PixelBlast
+        color="#B19EEF"
+        variant="square"
+        pixelSize={4}
+        patternScale={2}
+        patternDensity={1}
+        pixelSizeJitter={0}
+        speed={0.5}
+        edgeFade={0.25}
+        enableRipples={false}
+        liquid={false}
+        transparent
+      />
+      <div className="max-w-md w-full space-y-8 relative bg-white/90 backdrop-blur-md rounded-xl p-8 shadow-xl">
         <div className="text-center">
           <div className="flex justify-center mb-6">
             <Logo width={160} height={46} />

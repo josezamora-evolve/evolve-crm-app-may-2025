@@ -2,6 +2,7 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { AuthProvider } from "@/components/AuthProvider"
 import { UserProfile } from "@/components/UserProfile"
+import { ChatBox } from "@/components/dashboard/ChatBox"
 
 export default function DashboardLayout({
   children,
@@ -11,16 +12,21 @@ export default function DashboardLayout({
   return (
     <AuthProvider>
       <SidebarProvider>
-        <div className="flex min-h-screen w-full">
+        <div className="flex h-screen w-full overflow-hidden">
           <AppSidebar />
-          <div className="flex-1 flex flex-col">
-            <header className="sticky top-0 h-16 border-b bg-white px-6 flex items-center justify-between z-10">
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <header className="flex-none h-16 border-b bg-white px-6 flex items-center justify-between z-10">
               <h1 className="text-xl font-semibold">CRM Dashboard</h1>
               <UserProfile />
             </header>
-            <main className="flex-1 p-6 bg-white">
-              {children}
-            </main>
+            <div className="flex-1 flex min-h-0">
+              <main className="flex-1 p-6 bg-white overflow-auto">
+                {children}
+              </main>
+              <aside className="w-96 border-l bg-background flex flex-col">
+                <ChatBox />
+              </aside>
+            </div>
           </div>
         </div>
       </SidebarProvider>

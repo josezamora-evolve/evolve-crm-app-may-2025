@@ -37,16 +37,27 @@ export const auth = {
   // Sign in with Google
   async signInWithGoogle() {
     const supabase = createClient()
-    // Check if we're on the client side
-    const redirectTo = typeof window !== 'undefined' 
-      ? `${window.location.origin}/auth/callback`
-      : `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+    // Get the current URL origin or use the environment variable
+    const siteUrl = 
+      typeof window !== 'undefined' 
+        ? window.location.origin 
+        : process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    
+    // Ensure the URL doesn't have a trailing slash
+    const cleanSiteUrl = siteUrl.endsWith('/') ? siteUrl.slice(0, -1) : siteUrl
+    const redirectTo = `${cleanSiteUrl}/auth/callback`
+    
+    console.log('Redirecting to:', redirectTo) // For debugging
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo
-      }
+        redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
+      },
     })
     return { data, error }
   },

@@ -2,7 +2,6 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/AppSidebar"
 import { AuthProvider } from "@/components/AuthProvider"
 import { UserProfile } from "@/components/UserProfile"
-import { ChatBox } from "@/components/dashboard/ChatBox"
 
 export default function DashboardLayout({
   children,
@@ -23,9 +22,6 @@ export default function DashboardLayout({
               <main className="flex-1 p-6 bg-white overflow-auto">
                 {children}
               </main>
-              <aside className="w-96 border-l bg-background flex flex-col">
-                <ChatBox />
-              </aside>
             </div>
           </div>
         </div>

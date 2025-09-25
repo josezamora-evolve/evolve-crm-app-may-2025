@@ -65,7 +65,8 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen relative flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <PixelBlast
+      <div className="absolute">
+        <PixelBlast
         color="#B19EEF"
         variant="square"
         pixelSize={4}
@@ -78,7 +79,9 @@ export default function LoginPage() {
         liquid={false}
         transparent
       />
-      <div className="max-w-md w-full space-y-8 relative bg-white/90 backdrop-blur-md rounded-xl p-8 shadow-xl">
+      </div>
+      
+      <div className="max-w-md w-full space-y-8 relative bg-white/90 backdrop-blur-md rounded-xl p-8 shadow-xl border border-gray-200" >
         <div className="text-center">
           <div className="flex justify-center mb-6">
             <Logo width={160} height={46} />

@@ -93,10 +93,6 @@ export default function CustomersPage() {
     }
   };
 
-  const handlePurchase = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    setIsPurchaseDialogOpen(true);
-  };
 
   const handlePurchaseSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
